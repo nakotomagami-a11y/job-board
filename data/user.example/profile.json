@@ -1,0 +1,22 @@
+{
+  "name": "",
+  "email": "",
+  "location": "",
+  "remotePreference": "remote",
+  "preferredRegions": ["Worldwide"],
+  "preferredRoles": [
+    "Frontend Developer",
+    "React Developer",
+    "React Native Developer",
+    "JavaScript Developer",
+    "TypeScript Developer",
+    "Frontend Engineer"
+  ],
+  "preferredSeniority": ["Any"],
+  "preferredCategories": ["Any"],
+  "skills": [],
+  "cvText": "",
+  "onboardingComplete": false,
+  "createdAt": "",
+  "updatedAt": ""
+}

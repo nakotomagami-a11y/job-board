@@ -1,0 +1,46 @@
+# ───── Dependencies ─────
+node_modules/
+.pnp
+.pnp.js
+
+# ───── Next.js build output ─────
+.next/
+out/
+build/
+
+# ───── Personal user data ─────
+# All files inside data/user/ contain personal profile, CV, and job data.
+# Copy data/user.example/ → data/user/ to get started.
+data/user/
+
+# ───── Environment / secrets ─────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ───── Logs ─────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# ───── Editor ─────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+
+# ───── OS ─────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ───── Claude Code workspace settings ─────
+.claude/
+
+# ───── TypeScript ─────
+tsconfig.tsbuildinfo
+next-env.d.ts

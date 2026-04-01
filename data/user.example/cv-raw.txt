@@ -1,0 +1,2 @@
+# Paste your CV/resume text here.
+# The app will read this file during onboarding and extract your skills, experience, and role preferences.

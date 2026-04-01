@@ -1,0 +1,178 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import Select from "react-select";
+import worldCountries from "world-countries";
+
+interface CountryOption {
+  value: string;
+  label: string;
+  name: string;
+}
+
+interface CountrySearchProps {
+  onSearch: (countries: CountryOption[]) => void;
+  isSearching: boolean;
+}
+
+// Build sorted options from world-countries package
+const countryOptions: CountryOption[] = worldCountries
+  .map((c) => ({
+    value: c.cca2,
+    label: `${c.flag} ${c.name.common}`,
+    name: c.name.common,
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [selected, setSelected] = useState<CountryOption[]>([]);
+
+  // Memoize to avoid re-renders
+  const selectedNames = useMemo(
+    () => selected.map((s) => s.label).join(", "),
+    [selected]
+  );
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="filter-btn"
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          margin: "0 auto", fontSize: "0.82rem",
+        }}
+      >
+        🌍 {expanded ? "Hide" : "Local Job Boards"}
+        {selected.length > 0 && (
+          <span style={{
+            background: "var(--c-primary)", color: "#0a0a0f",
+            borderRadius: 99, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700,
+          }}>
+            {selected.length}
+          </span>
+        )}
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 12, maxWidth: 560, margin: "12px auto 0" }}>
+          <div style={{
+            fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase",
+            letterSpacing: "0.06em", color: "var(--text-dim)", marginBottom: 8,
+          }}>
+            Select countries — Claude will find local job boards and search them
+          </div>
+
+          <Select
+            isMulti
+            options={countryOptions}
+            value={selected}
+            onChange={(val) => setSelected([...(val || [])])}
+            placeholder="Search for a country..."
+            isDisabled={isSearching}
+            filterOption={(option, input) => {
+              if (!input) return true;
+              return option.data.name.toLowerCase().includes(input.toLowerCase());
+            }}
+            styles={{
+              control: (base) => ({
+                ...base,
+                background: "rgba(255,255,255,0.04)",
+                borderColor: "rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                minHeight: 42,
+                boxShadow: "none",
+                "&:hover": { borderColor: "rgba(255,255,255,0.18)" },
+              }),
+              menu: (base) => ({
+                ...base,
+                background: "#1a1a2e",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 10,
+                zIndex: 50,
+              }),
+              menuList: (base) => ({
+                ...base,
+                maxHeight: 200,
+                padding: 4,
+              }),
+              option: (base, state) => ({
+                ...base,
+                background: state.isFocused ? "rgba(255,255,255,0.08)" : "transparent",
+                color: "#e4e4e7",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontSize: "0.85rem",
+                padding: "8px 12px",
+                "&:active": { background: "rgba(56,189,248,0.15)" },
+              }),
+              multiValue: (base) => ({
+                ...base,
+                background: "rgba(56,189,248,0.15)",
+                borderRadius: 6,
+              }),
+              multiValueLabel: (base) => ({
+                ...base,
+                color: "#38bdf8",
+                fontSize: "0.8rem",
+              }),
+              multiValueRemove: (base) => ({
+                ...base,
+                color: "#38bdf8",
+                "&:hover": { background: "rgba(56,189,248,0.3)", color: "#fff" },
+              }),
+              input: (base) => ({
+                ...base,
+                color: "#e4e4e7",
+              }),
+              placeholder: (base) => ({
+                ...base,
+                color: "#71717a",
+                fontSize: "0.85rem",
+              }),
+              indicatorSeparator: () => ({ display: "none" }),
+              dropdownIndicator: (base) => ({
+                ...base,
+                color: "#71717a",
+                "&:hover": { color: "#a1a1aa" },
+              }),
+              clearIndicator: (base) => ({
+                ...base,
+                color: "#71717a",
+                "&:hover": { color: "#f87171" },
+              }),
+            }}
+          />
+
+          {/* Selected preview + search button */}
+          {selected.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{
+                fontSize: "0.75rem", color: "var(--text-dim)", marginBottom: 10,
+              }}>
+                Claude will discover and search local job boards in: {selectedNames}
+              </div>
+
+              <button
+                className="apply-btn"
+                onClick={() => onSearch(selected)}
+                disabled={isSearching}
+                style={{
+                  width: "100%", justifyContent: "center",
+                  padding: "10px 20px", fontSize: "0.85rem",
+                  opacity: isSearching ? 0.6 : 1,
+                }}
+              >
+                {isSearching
+                  ? `⏳ Searching ${selected.length} countries...`
+                  : `🔍 Find jobs in ${selected.length} ${selected.length === 1 ? "country" : "countries"}`
+                }
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

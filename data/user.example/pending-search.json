@@ -1,0 +1,19 @@
+{
+  "type": "search",
+  "config": {
+    "regions": ["Worldwide"],
+    "roleTypes": [],
+    "seniority": [],
+    "categories": [],
+    "remoteOnly": true,
+    "localOnly": false,
+    "salaryMin": "",
+    "customQuery": "",
+    "countries": [],
+    "maxBoards": 10,
+    "searchScope": "focused",
+    "parallelMode": false
+  },
+  "createdAt": null,
+  "batchState": null
+}
