@@ -123,3 +123,79 @@ Automatically removes jobs older than 30 days. No Claude call needed — handled
 2. Extract job details (title, company, location, etc.)
 3. Generate unique ID
 4. Append to `data/user/jobs.json`
+
+---
+
+## 🌐 SEARCH METHOD: WebFetch vs Browser MCP
+
+When searching job boards, Claude uses two methods. **Always try WebFetch first.** Fall back to Browser MCP when WebFetch fails.
+
+### Method 1: WebFetch (default)
+Use `WebFetch` for all boards by default. It's fast and token-efficient.
+
+**WebFetch works well for:**
+- Boards with public REST APIs (e.g. Remotive: `https://remotive.com/api/remote-jobs?category=software-dev&search=react&limit=20`)
+- Static HTML job pages
+- Google search snippets to find individual job URLs
+
+**WebFetch FAILS for:**
+- JS-rendered boards (React/Next.js apps) — returns empty HTML shell, no job data
+- Sites with bot protection (Cloudflare, Incapsula) — returns 403 or challenge page
+- Pages requiring login/subscription (e.g. FlexJobs)
+
+### Method 2: Browser MCP (fallback)
+If WebFetch returns no job data, an empty page, a 403/404/410, or bot-challenge HTML, **connect to Browser MCP** using the `mcp__Claude_in_Chrome__` tools.
+
+**How to switch to Browser MCP:**
+```
+- Use mcp__Claude_in_Chrome__tabs_context_mcp to get an active tab
+- Use mcp__Claude_in_Chrome__navigate to load the job board URL
+- Use mcp__Claude_in_Chrome__get_page_text or read_page to extract job listings
+- Wait for JS to render if needed (mcp__Claude_in_Chrome__computer with wait)
+```
+
+**Browser MCP works for:**
+- JS-rendered boards (Himalayas, Wellfound, startup.jobs, YC Work at a Startup)
+- Sites returning 403 to headless fetchers but accessible in real browser
+- Pages that require scrolling/interaction to load more listings
+
+### Boards requiring Browser MCP (identified in past searches)
+
+| Board | Reason | Notes |
+|-------|--------|-------|
+| Himalayas (himalayas.app) | JS-rendered, API 404 | Good board for worldwide remote |
+| Wellfound / AngelList (wellfound.com) | 403 on all direct pages | Good startup jobs |
+| startup.jobs (startup.jobs) | 403 on all direct pages | Good startup jobs |
+| Y Combinator Work at a Startup (workatastartup.com) | JS-rendered, most URLs 404 | YC-backed companies |
+| Remote.co (remote.co) | Timeouts (60s+) | Worldwide remote focus |
+| Working Nomads (workingnomads.com) | JS-rendered, no data | Remote-first board |
+| Otta / Welcome to the Jungle (welcometothejungle.com) | JS-rendered, returns no results | Otta was acquired by WTTJ |
+| The Muse (themuse.com) | Individual job URLs return 404 | Some worldwide listings |
+| Turing (turing.com) | Incapsula bot-blocking | Talent vetting platform |
+| Toptal (toptal.com) | 403 on all pages | Freelance talent network |
+
+### Boards with structural issues (not bot-blocking)
+
+| Board | Status | Notes |
+|-------|--------|-------|
+| FlexJobs (flexjobs.com) | Paywall — subscription required | Not worth Browser MCP |
+| Triplebyte (triplebyte.com) | **Defunct** — shut down March 2023, acquired by Karat | Remove from board list |
+| Hired (hired.com) | **Acquired** — redirects to LHH Recruitment Solutions (June 2024) | Changed from tech marketplace to broad HR |
+| Dice (dice.com) | US-centric — all listings require US location/timezone | Not useful for worldwide remote |
+
+### Search state tracking
+
+After each search session, update `data/user/search-batch-state.json`:
+- Add newly searched boards to `searchedBoards`
+- Remove them from `remainingBoards`
+- Add bot-blocked boards to `botBlockedBoards` with the reason
+- Update `jobsFoundTotal` with total count from `data/user/jobs.json`
+
+### Remotive API (reliable data source)
+Remotive provides a free public API — use it when available:
+```
+https://remotive.com/api/remote-jobs?category=software-dev&search=react&limit=20
+https://remotive.com/api/remote-jobs?category=software-dev&search=frontend&limit=20
+https://remotive.com/api/remote-jobs?category=software-dev&search=react+native&limit=20
+```
+This returns clean JSON with worldwide remote jobs. Always deduplicate against existing `jobs.json` IDs.
