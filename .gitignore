@@ -13,6 +13,14 @@ build/
 # Copy data/user.example/ → data/user/ to get started.
 data/user/
 
+# ───── User-specific docs ─────
+# These contain personal search history, company wishlists, and CV data.
+# Keep them local only.
+docs/CV_REFERENCE.md
+docs/SEARCH_LOG.md
+docs/SOURCES.md
+docs/SEARCH_STRATEGY.md
+
 # ───── Environment / secrets ─────
 .env
 .env.local
