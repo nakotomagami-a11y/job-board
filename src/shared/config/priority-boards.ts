@@ -21,6 +21,13 @@ export const TIER2_BOARDS = [
   "Remote.co (remote.co)",
   "Remotive (remotive.com)",
   "JustRemote (justremote.co)",
+  "Remote Rocketship (remoterocketship.com)",
+  "DailyRemote (dailyremote.com)",
+  "Jobspresso (jobspresso.co)",
+  "Remote100K (remote100k.com)",
+  "NoDesk (nodesk.co)",
+  "Jobicy (jobicy.com)",
+  "Dynamite Jobs (dynamitejobs.com)",
 ];
 
 // Tier 3: Startup & tech focused
@@ -36,6 +43,9 @@ export const TIER3_BOARDS = [
   "Triplebyte (triplebyte.com)",
   "Turing (turing.com/jobs)",
   "Toptal (toptal.com/careers)",
+  "Contra (contra.com)",
+  "HiringCafe (hiring.cafe)",
+  "Weekday (jobs.weekday.works)",
 ];
 
 // Tier 4: ATS platforms — search by keyword on their public boards
@@ -63,9 +73,13 @@ export const TIER6_BOARDS = [
   "web3.career (web3.career)",
   "CryptoJobsList (cryptojobslist.com)",
   "crypto.jobs (crypto.jobs)",
+  "CryptocurrencyJobs (cryptocurrencyjobs.co)",
+  "HireWeb3 (hireweb3.io)",
+  "Remote3 (remote3.co)",
   "Hitmarker Gaming (hitmarker.net)",
   "Work With Indies (workwithindies.com)",
   "RemoteGameJobs (remotegamejobs.com)",
+  "Indie Dragoness Game Dev Jobs (indiedragoness.dev/game-dev-jobs)",
   "AI Jobs (aijobs.net)",
   "ML Jobs Board (mljobs.org)",
 ];
@@ -82,6 +96,7 @@ export const TIER7_BOARDS = [
   "Just Join IT Poland (justjoin.it)",
   "Welcome to the Jungle France (welcometothejungle.com)",
   "MeetFrank Baltics (meetfrank.com)",
+  "Arbeitnow (arbeitnow.com)",
 ];
 
 export const ALL_BOARDS = [
@@ -89,4 +104,4 @@ export const ALL_BOARDS = [
   ...TIER4_BOARDS, ...TIER5_BOARDS, ...TIER6_BOARDS, ...TIER7_BOARDS,
 ];
 
-// Total: 55+ boards
+// Total: 75+ boards

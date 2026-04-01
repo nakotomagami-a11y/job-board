@@ -17,8 +17,17 @@ const DEFAULT_SOURCES = [
   { name: "HN Who is Hiring", url: "https://hnhiring.com", enabled: true },
   { name: "Hitmarker (Gaming)", url: "https://hitmarker.net/jobs", enabled: true },
   { name: "CryptoJobsList", url: "https://cryptojobslist.com", enabled: true },
+  { name: "CryptocurrencyJobs", url: "https://cryptocurrencyjobs.co", enabled: true },
+  { name: "Weekday", url: "https://jobs.weekday.works", enabled: true },
+  { name: "Glassdoor", url: "https://glassdoor.com", enabled: true },
   { name: "EU Remote Jobs", url: "https://euremotejobs.com", enabled: true },
   { name: "startup.jobs", url: "https://startup.jobs", enabled: true },
+  { name: "Jobspresso", url: "https://jobspresso.co", enabled: true },
+  { name: "DailyRemote", url: "https://dailyremote.com", enabled: true },
+  { name: "Remote Rocketship", url: "https://remoterocketship.com", enabled: true },
+  { name: "Himalayas", url: "https://himalayas.app", enabled: true },
+  { name: "Remotive", url: "https://remotive.com", enabled: true },
+  { name: "Jobicy", url: "https://jobicy.com", enabled: true },
 ];
 
 export async function GET() {

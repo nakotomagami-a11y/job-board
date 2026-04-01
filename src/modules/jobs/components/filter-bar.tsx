@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { REGIONS, SENIORITIES, TIMEFRAMES } from "@shared/config/filters";
-import type { Filters } from "../hooks/use-filters";
+import type { Filters, StatusFilter } from "../hooks/use-filters";
 import type { Job } from "@shared/types/job";
 
 interface FilterBarProps {
@@ -45,13 +45,22 @@ function FilterGroup({
 export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarProps) {
   const [expanded, setExpanded] = useState(false);
 
+  const STATUS_OPTIONS: StatusFilter[] = ["All", "Active", "Applied", "Rejected"];
+
+  const statusCounts = {
+    Applied: jobs.filter((j) => j.applied).length,
+    Rejected: jobs.filter((j) => j.rejected).length,
+    Active: jobs.filter((j) => !j.applied && !j.rejected).length,
+  };
+
   const hasActiveFilters =
     filters.region !== "All" ||
     filters.roleType !== "All" ||
     filters.seniority !== "All" ||
     filters.companyType !== "All" ||
     filters.category !== "All" ||
-    filters.timeframeDays !== 999;
+    filters.timeframeDays !== 999 ||
+    filters.status !== "All";
 
   // Build dynamic options from actual job data
   const categories = ["All", ...Array.from(new Set(jobs.map((j) => j.category))).sort()];
@@ -66,6 +75,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
     filters.companyType !== "All",
     filters.category !== "All",
     filters.timeframeDays !== 999,
+    filters.status !== "All",
   ].filter(Boolean).length;
 
   // Primary filters always visible: Region + Timeframe
@@ -95,6 +105,36 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Status filter */}
+      <div>
+        <div className="filter-group-label">Status</div>
+        <div className="filter-row">
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              className={`filter-btn ${filters.status === opt ? "active" : ""}`}
+              onClick={() => setFilter("status", opt)}
+              style={
+                opt === "Applied" && filters.status === opt
+                  ? { background: "rgba(52,211,153,0.15)", borderColor: "rgba(52,211,153,0.4)", color: "#34d399" }
+                  : opt === "Rejected" && filters.status === opt
+                    ? { background: "rgba(248,113,113,0.15)", borderColor: "rgba(248,113,113,0.4)", color: "#f87171" }
+                    : undefined
+              }
+            >
+              {opt}
+              {opt !== "All" && (
+                <span style={{
+                  marginLeft: 4, fontSize: "0.68rem", opacity: 0.6,
+                }}>
+                  {statusCounts[opt]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 

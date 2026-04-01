@@ -40,6 +40,20 @@ export function useJobStore() {
     [fetchJobs]
   );
 
+  const updateJob = useCallback(
+    async (id: string, updates: Partial<Job>) => {
+      await fetch(API.jobs, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates }),
+      });
+      setJobs((prev) =>
+        prev.map((j) => (j.id === id ? { ...j, ...updates } : j))
+      );
+    },
+    []
+  );
+
   const deleteJob = useCallback(
     async (id: string) => {
       await fetch(API.jobs, {
@@ -64,5 +78,5 @@ export function useJobStore() {
     []
   );
 
-  return { jobs, loading, addJobs, deleteJob, replaceAll, refetch: fetchJobs };
+  return { jobs, loading, addJobs, updateJob, deleteJob, replaceAll, refetch: fetchJobs };
 }

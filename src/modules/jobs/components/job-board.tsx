@@ -18,11 +18,12 @@ import { ROUTES, API } from "@lib/constants";
 interface JobBoardProps {
   jobs: Job[];
   onRefresh?: () => Promise<void>;
+  onUpdateJob?: (id: string, updates: Partial<Job>) => Promise<void>;
 }
 
 type ActionStatus = "idle" | "running" | "done" | "error";
 
-export function JobBoard({ jobs, onRefresh }: JobBoardProps) {
+export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
   const { profile } = useProfile();
   const scoredJobs = useJobScoring(jobs, profile);
   const { filters, filtered, setFilter, resetFilters } = useFilters(scoredJobs);
@@ -355,7 +356,13 @@ export function JobBoard({ jobs, onRefresh }: JobBoardProps) {
           </div>
         ) : (
           sorted.map((job, i) => (
-            <JobCard key={job.id} job={job} index={i} />
+            <JobCard
+              key={job.id}
+              job={job}
+              index={i}
+              onMarkApplied={onUpdateJob ? (id) => onUpdateJob(id, { applied: true, appliedDate: new Date().toISOString().slice(0, 10) }) : undefined}
+              onReject={onUpdateJob ? (id) => onUpdateJob(id, { rejected: true }) : undefined}
+            />
           ))
         )}
       </div>

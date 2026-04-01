@@ -61,6 +61,23 @@ export async function PUT(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  try {
+    const { id, ...updates } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    }
+    const existing = await getJobs();
+    const jobs = (existing as Array<Record<string, unknown>>).map((j) =>
+      j.id === id ? { ...j, ...updates } : j
+    );
+    await fs.writeFile(USER_JOBS_PATH, JSON.stringify(jobs, null, 2));
+    return NextResponse.json({ updated: id });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const { id } = await req.json();

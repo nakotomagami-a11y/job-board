@@ -191,6 +191,24 @@ body::before {
 }
 .apply-btn svg { width: 14px; height: 14px; }
 
+.card-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; align-self: flex-start; }
+
+.card-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+}
+.card-action-btn:hover { background: var(--surface-hover); border-color: var(--border-hover); }
+
+.card-action-applied:hover { background: rgba(52,211,153,0.15); border-color: rgba(52,211,153,0.4); color: #34d399; }
+.card-action-reject:hover { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4); color: #f87171; }
+
+.badge-applied { background: rgba(52,211,153,0.15); color: #34d399; font-size: 0.68rem; padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 600; }
+.badge-rejected { background: rgba(248,113,113,0.15); color: #f87171; font-size: 0.68rem; padding: 3px 10px; border-radius: var(--radius-pill); font-weight: 600; }
+
+.job-card.is-rejected { opacity: 0.45; }
+
 .empty-state { text-align: center; padding: 80px 24px; color: var(--text-dim); }
 .empty-state p { font-size: 1.1rem; margin-bottom: 4px; }
 .empty-state small { font-size: 0.85rem; }

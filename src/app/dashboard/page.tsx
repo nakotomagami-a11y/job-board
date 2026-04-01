@@ -4,7 +4,7 @@ import { JobBoard } from "@modules/jobs/components/job-board";
 import { useJobStore } from "@modules/jobs/hooks/use-job-store";
 
 export default function DashboardPage() {
-  const { jobs, loading, refetch } = useJobStore();
+  const { jobs, loading, updateJob, refetch } = useJobStore();
 
   if (loading) {
     return (
@@ -22,5 +22,5 @@ export default function DashboardPage() {
     );
   }
 
-  return <JobBoard jobs={jobs} onRefresh={refetch} />;
+  return <JobBoard jobs={jobs} onRefresh={refetch} onUpdateJob={updateJob} />;
 }

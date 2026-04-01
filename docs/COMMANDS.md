@@ -163,12 +163,12 @@ If WebFetch returns no job data, an empty page, a 403/404/410, or bot-challenge 
 
 | Board | Reason | Notes |
 |-------|--------|-------|
-| Himalayas (himalayas.app) | JS-rendered, API 404 | Good board for worldwide remote |
+| Himalayas (himalayas.app) | JS-rendered, API 404 | ✅ Works via Browser MCP. URL pattern: `https://himalayas.app/jobs/worldwide?q=ROLE&experience=mid-level%2Csenior&type=full-time` — search react+developer, frontend+engineer, react+native separately. Use `/companies/SLUG/jobs/JOB-SLUG` URLs for job pages. |
 | Wellfound / AngelList (wellfound.com) | 403 on all direct pages | Good startup jobs |
 | startup.jobs (startup.jobs) | 403 on all direct pages | Good startup jobs |
 | Y Combinator Work at a Startup (workatastartup.com) | JS-rendered, most URLs 404 | YC-backed companies |
 | Remote.co (remote.co) | Timeouts (60s+) | Worldwide remote focus |
-| Working Nomads (workingnomads.com) | JS-rendered, no data | Remote-first board |
+| Working Nomads (workingnomads.com) | JS-rendered, no data via WebFetch | ✅ Works via Browser MCP. URL: `https://www.workingnomads.com/jobs?category=development&tag=react` — returns 50+ results. Apply URLs are at `/job/go/{ID}/` which redirect to external site. Use `document.querySelectorAll('a[href*="/jobs/"]')` to extract links. |
 | Otta / Welcome to the Jungle (welcometothejungle.com) | JS-rendered, returns no results | Otta was acquired by WTTJ |
 | The Muse (themuse.com) | Individual job URLs return 404 | Some worldwide listings |
 | Turing (turing.com) | Incapsula bot-blocking | Talent vetting platform |

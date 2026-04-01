@@ -7,6 +7,8 @@ import { JobScoreBadge } from "./job-score-badge";
 interface JobCardProps {
   job: Job;
   index: number;
+  onMarkApplied?: (id: string) => void;
+  onReject?: (id: string) => void;
 }
 
 const COMPANY_COLORS = [
@@ -42,14 +44,14 @@ function daysAgo(dateStr: string): string {
   return `${Math.floor(diff / 30)}mo ago`;
 }
 
-export function JobCard({ job, index }: JobCardProps) {
+export function JobCard({ job, index, onMarkApplied, onReject }: JobCardProps) {
   const companyColor = getCompanyColor(job.company);
   const regionColor = REGION_COLORS[job.region] ?? "#818cf8";
   const roleColor = ROLE_TYPE_COLORS[job.roleType] ?? "#38bdf8";
 
   return (
     <div
-      className="job-card"
+      className={`job-card${job.rejected ? " is-rejected" : ""}`}
       style={
         {
           "--card-accent": companyColor,
@@ -81,18 +83,51 @@ export function JobCard({ job, index }: JobCardProps) {
             <div className="job-title">{job.title}</div>
             <div className="job-company">{job.company}</div>
           </div>
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="apply-btn"
-          >
-            Apply
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 17L17 7" />
-              <path d="M7 7h10v10" />
-            </svg>
-          </a>
+          <div className="card-actions">
+            {job.applied && (
+              <span className="badge badge-applied">Applied</span>
+            )}
+            {job.rejected && (
+              <span className="badge badge-rejected">Rejected</span>
+            )}
+            {!job.rejected && (
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="apply-btn"
+              >
+                Apply
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 17L17 7" />
+                  <path d="M7 7h10v10" />
+                </svg>
+              </a>
+            )}
+            {!job.applied && !job.rejected && onMarkApplied && (
+              <button
+                className="card-action-btn card-action-applied"
+                onClick={() => onMarkApplied(job.id)}
+                title="Mark as applied"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </button>
+            )}
+            {!job.rejected && onReject && (
+              <button
+                className="card-action-btn card-action-reject"
+                onClick={() => onReject(job.id)}
+                title="Reject"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Meta row */}

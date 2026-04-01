@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import type { Job } from "@shared/types/job";
 
+export type StatusFilter = "All" | "Active" | "Applied" | "Rejected";
+
 export interface Filters {
   search: string;
   region: string;
@@ -11,6 +13,7 @@ export interface Filters {
   companyType: string;
   category: string;
   timeframeDays: number;
+  status: StatusFilter;
 }
 
 const initialFilters: Filters = {
@@ -21,6 +24,7 @@ const initialFilters: Filters = {
   companyType: "All",
   category: "All",
   timeframeDays: 999,
+  status: "All",
 };
 
 export function useFilters(jobs: Job[]) {
@@ -77,6 +81,11 @@ export function useFilters(jobs: Job[]) {
           (now.getTime() - posted.getTime()) / (1000 * 60 * 60 * 24);
         if (diffDays > filters.timeframeDays) return false;
       }
+
+      // Status
+      if (filters.status === "Applied" && !job.applied) return false;
+      if (filters.status === "Rejected" && !job.rejected) return false;
+      if (filters.status === "Active" && (job.applied || job.rejected)) return false;
 
       return true;
     });
