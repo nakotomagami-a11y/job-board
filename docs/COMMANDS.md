@@ -7,12 +7,36 @@ Commands for Claude Code to execute when maintaining the job board app.
 The app generates search prompts (saved to `data/user/command-prompt.txt` and `data/user/pending-search.json`). You tell Claude Code to run the search, and Claude searches + writes results directly to `data/user/jobs.json`. **No extra API calls, no extra token cost** — it all happens in your existing Claude Code conversation.
 
 **Quick commands you can say:**
-- "Run the job search" — reads pending-search.json and executes
+- `/search-latest` — quick scan of all high-yield boards for latest postings (first page only, last 7 days)
+- "Run the job search" — reads pending-search.json and executes full batch
 - "Search for frontend jobs in Europe" — direct search
 - "Search local boards in Lithuania" — local search
 - "Check Rockstar and EA for jobs" — company search
 - "Audit my job list" — remove expired jobs
 - "Add this job: [url]" — manual add
+
+---
+
+## ⚡ SEARCH_LATEST (Quick Scan)
+
+**Trigger:** User runs `/search-latest` or says "check latest jobs"
+
+**What it does:** Quick-scans the first page of all 13 high-yield boards for jobs posted in the last 7 days. Unlike CHECK_NEW_JOBS which processes boards in batches, this hits all reliable boards at once using parallel agents — designed for daily use.
+
+**Boards checked (13):** Remotive (API), RemoteOK (API), Himalayas, arc.dev, WeWorkRemotely, Working Nomads, Wellfound, LinkedIn, Indeed, Built In, web3.career, Jobicy (API), DailyRemote
+
+**Key differences from CHECK_NEW_JOBS:**
+- First page only — no pagination
+- Last 7 days only — skip older listings
+- All boards in parallel — much faster
+- Skips known-dead boards (FlexJobs, Turing, Toptal, etc.)
+
+**Steps:**
+1. Read profile, existing jobs, and COMMANDS.md for context
+2. Launch parallel agents (4 groups of 2-3 boards each)
+3. Each agent checks first page, collects jobs from last 7 days
+4. Merge, deduplicate against existing jobs, append new ones to jobs.json
+5. Update search-batch-state.json with timestamp and count
 
 ---
 
