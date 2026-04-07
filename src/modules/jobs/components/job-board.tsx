@@ -14,6 +14,7 @@ import { CountrySearch } from "./country-search";
 import { CompanyTracker } from "./company-tracker";
 import { SearchConfig, type SearchParams } from "./search-config";
 import { ROUTES, API } from "@lib/constants";
+import { salarySortValue } from "@lib/salary";
 
 interface JobBoardProps {
   jobs: Job[];
@@ -223,12 +224,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
     }
     if (sortBy === "salary") {
-      const getSalaryNum = (s?: string) => {
-        if (!s) return 0;
-        const nums = s.match(/[\d,]+/g);
-        return nums ? parseInt(nums[0].replace(/,/g, "")) : 0;
-      };
-      return getSalaryNum(b.salary) - getSalaryNum(a.salary);
+      return salarySortValue(b.salary) - salarySortValue(a.salary);
     }
     // Default: score
     return (b.matchScore ?? 0) - (a.matchScore ?? 0);
