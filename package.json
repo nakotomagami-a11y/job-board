@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "vitest run"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prepare": "node ./scripts/install-git-hooks.mjs || true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -20,6 +21,7 @@
     "world-countries": "^5.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
@@ -28,6 +30,7 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.0",
     "vitest": "^4.1.2"
   }
 }

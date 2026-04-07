@@ -190,9 +190,6 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
   };
 
   const hasCountries = config.countries.length > 0;
-  const hasAnyFilter = config.regions.length > 0 || config.roleTypes.length > 0 ||
-    config.seniority.length > 0 || config.categories.length > 0 ||
-    config.remoteOnly || config.salaryMin || config.customQuery || hasCountries;
 
   return (
     <div style={{
