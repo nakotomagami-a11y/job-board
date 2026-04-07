@@ -2,94 +2,14 @@
 
 import { useState, useMemo } from "react";
 import type { Job } from "@shared/types/job";
+import { applyFilters, initialFilters, type Filters } from "@lib/filter-jobs";
 
-export type StatusFilter = "All" | "Active" | "Applied" | "Rejected";
-
-export interface Filters {
-  search: string;
-  region: string;
-  roleType: string;
-  seniority: string;
-  companyType: string;
-  category: string;
-  timeframeDays: number;
-  status: StatusFilter;
-}
-
-const initialFilters: Filters = {
-  search: "",
-  region: "All",
-  roleType: "All",
-  seniority: "All",
-  companyType: "All",
-  category: "All",
-  timeframeDays: 999,
-  status: "All",
-};
+export type { Filters, StatusFilter } from "@lib/filter-jobs";
 
 export function useFilters(jobs: Job[]) {
   const [filters, setFilters] = useState<Filters>(initialFilters);
 
-  const filtered = useMemo(() => {
-    const now = new Date();
-    return jobs.filter((job) => {
-      // Search
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        const searchable = [
-          job.title,
-          job.company,
-          job.location,
-          job.description ?? "",
-          ...job.tags,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!searchable.includes(q)) return false;
-      }
-
-      // Region
-      if (filters.region !== "All") {
-        if (filters.region === "Remote" && !job.remote) return false;
-        if (filters.region !== "Remote" && job.region !== filters.region)
-          return false;
-      }
-
-      // Role type
-      if (filters.roleType !== "All" && job.roleType !== filters.roleType)
-        return false;
-
-      // Seniority
-      if (filters.seniority !== "All" && job.seniority !== filters.seniority)
-        return false;
-
-      // Company type
-      if (
-        filters.companyType !== "All" &&
-        job.companyType !== filters.companyType
-      )
-        return false;
-
-      // Category
-      if (filters.category !== "All" && job.category !== filters.category)
-        return false;
-
-      // Timeframe
-      if (filters.timeframeDays < 999) {
-        const posted = new Date(job.postedDate);
-        const diffDays =
-          (now.getTime() - posted.getTime()) / (1000 * 60 * 60 * 24);
-        if (diffDays > filters.timeframeDays) return false;
-      }
-
-      // Status
-      if (filters.status === "Applied" && !job.applied) return false;
-      if (filters.status === "Rejected" && !job.rejected) return false;
-      if (filters.status === "Active" && (job.applied || job.rejected)) return false;
-
-      return true;
-    });
-  }, [jobs, filters]);
+  const filtered = useMemo(() => applyFilters(jobs, filters), [jobs, filters]);
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
