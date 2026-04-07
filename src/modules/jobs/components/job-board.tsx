@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Job } from "@shared/types/job";
 import { useProfile } from "@shared/providers/profile-provider";
 import { useFilters } from "../hooks/use-filters";
@@ -36,6 +36,33 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
 
+  // Abort in-flight fetches on unmount so we don't write to state after teardown.
+  const abortRef = useRef<AbortController | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const newSignal = () => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    return ctrl.signal;
+  };
+
+  const scheduleStatusClear = (ms: number) => {
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    statusTimerRef.current = setTimeout(() => {
+      setActionStatus("idle");
+      setActionMsg("");
+      setActiveAction(null);
+    }, ms);
+  };
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    };
+  }, []);
+
   const strongMatches = filtered.filter(
     (j) => j.matchScore !== undefined && j.matchScore >= 70
   ).length;
@@ -56,6 +83,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command }),
+        signal: newSignal(),
       });
 
       const data = await res.json();
@@ -70,16 +98,12 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         setActionMsg(data.error || "Command failed");
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setActionStatus("error");
       setActionMsg(e instanceof Error ? e.message : "Command failed");
     }
 
-    // Clear status after 8 seconds
-    setTimeout(() => {
-      setActionStatus("idle");
-      setActionMsg("");
-      setActiveAction(null);
-    }, 8000);
+    scheduleStatusClear(8000);
   };
 
   const handleCountrySearch = async (countries: { value: string; label: string; name: string }[]) => {
@@ -94,6 +118,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: "local-search", countries: countryNames }),
+        signal: newSignal(),
       });
       const data = await res.json();
       if (res.ok && data.mode === "prompt") {
@@ -109,11 +134,12 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         setActionMsg(data.error || "Local search failed");
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setActionStatus("error");
       setActionMsg(e instanceof Error ? e.message : "Local search failed");
     }
 
-    setTimeout(() => { setActionStatus("idle"); setActionMsg(""); setActiveAction(null); }, 15000);
+    scheduleStatusClear(15000);
   };
 
   const handleCompanySearch = async (companies: { name: string; careersUrl: string }[]) => {
@@ -126,6 +152,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: "company-search", companies }),
+        signal: newSignal(),
       });
       const data = await res.json();
       if (res.ok && data.mode === "prompt") {
@@ -141,11 +168,12 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         setActionMsg(data.error || "Company search failed");
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setActionStatus("error");
       setActionMsg(e instanceof Error ? e.message : "Company search failed");
     }
 
-    setTimeout(() => { setActionStatus("idle"); setActionMsg(""); setActiveAction(null); }, 15000);
+    scheduleStatusClear(15000);
   };
 
   const handleConfiguredSearch = async (config: SearchParams) => {
@@ -159,6 +187,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: "search", searchConfig: config }),
+        signal: newSignal(),
       });
       const data = await res.json();
       if (res.ok && data.mode === "prompt") {
@@ -178,11 +207,12 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         setActionMsg(data.error || "Search failed");
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setActionStatus("error");
       setActionMsg(e instanceof Error ? e.message : "Search failed");
     }
 
-    setTimeout(() => { setActionStatus("idle"); setActionMsg(""); setActiveAction(null); }, 8000);
+    scheduleStatusClear(8000);
   };
 
   const isRunning = actionStatus === "running";
@@ -239,10 +269,20 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           🗑 Clear
         </button>
         <button className="filter-btn" onClick={async () => {
-          await fetch(API.runCommand, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command: "reset-batch" }) });
+          try {
+            await fetch(API.runCommand, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ command: "reset-batch" }),
+              signal: newSignal(),
+            });
+          } catch (e) {
+            if (e instanceof DOMException && e.name === "AbortError") return;
+            throw e;
+          }
           setActionMsg("Batch state reset — next search starts from board #1");
           setActionStatus("done");
-          setTimeout(() => { setActionStatus("idle"); setActionMsg(""); }, 4000);
+          scheduleStatusClear(4000);
         }}
           disabled={isRunning} style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1 }}>
           🔄 Reset Batch
