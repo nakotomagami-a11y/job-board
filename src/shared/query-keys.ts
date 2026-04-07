@@ -7,3 +7,5 @@ export const queryKeys = {
   companies: ["companies"] as const,
   searchHistory: ["search-history"] as const,
 } as const;
+
+export type QueryKey = (typeof queryKeys)[keyof typeof queryKeys];

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-
-interface TrackedCompany {
-  name: string;
-  careersUrl: string;
-}
+import { useState } from "react";
+import {
+  useTrackedCompanies,
+  type TrackedCompany,
+} from "../hooks/use-tracked-companies";
 
 interface CompanyTrackerProps {
   onSearch: (companies: TrackedCompany[]) => void;
@@ -13,26 +12,10 @@ interface CompanyTrackerProps {
 }
 
 export function CompanyTracker({ onSearch, isSearching }: CompanyTrackerProps) {
+  const { companies, error, refetch, save } = useTrackedCompanies();
   const [expanded, setExpanded] = useState(false);
-  const [companies, setCompanies] = useState<TrackedCompany[]>([]);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
-
-  useEffect(() => {
-    fetch("/api/companies")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setCompanies(data); })
-      .catch(() => {});
-  }, []);
-
-  const save = useCallback(async (updated: TrackedCompany[]) => {
-    setCompanies(updated);
-    await fetch("/api/companies", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    });
-  }, []);
 
   const addCompany = () => {
     const name = newName.trim();
@@ -72,6 +55,19 @@ export function CompanyTracker({ onSearch, isSearching }: CompanyTrackerProps) {
 
       {expanded && (
         <div style={{ marginTop: 12, maxWidth: 560, margin: "12px auto 0" }}>
+          {error && (
+            <div style={{
+              padding: "8px 12px", marginBottom: 12, borderRadius: 8,
+              background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
+              color: "#f87171", fontSize: "0.78rem",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+            }}>
+              <span>Couldn&apos;t load companies: {error instanceof Error ? error.message : "Unknown error"}</span>
+              <button className="filter-btn" style={{ fontSize: "0.72rem", padding: "2px 8px" }} onClick={() => refetch()}>
+                Retry
+              </button>
+            </div>
+          )}
           <div style={{
             fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase",
             letterSpacing: "0.06em", color: "var(--text-dim)", marginBottom: 8,
