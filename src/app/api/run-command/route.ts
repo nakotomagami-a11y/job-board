@@ -6,6 +6,7 @@ import {
   TIER4_BOARDS, TIER5_BOARDS, TIER6_BOARDS, TIER7_BOARDS,
   ALL_BOARDS,
 } from "@shared/config/priority-boards";
+import { rateLimit } from "@lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -170,6 +171,15 @@ Update ${abs("docs/SEARCH_LOG.md")}.`;
 }
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { bucket: "run-command", limit: 30, windowMs: 60_000 });
+  if (!limited.ok) {
+    const retryAfter = Math.max(1, Math.ceil((limited.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
+
   const body = await req.json();
   const { command, countries, companies, searchConfig } = body;
 
