@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { WebSearchTool20250305 } from "@anthropic-ai/sdk/resources/messages";
+import { rateLimit } from "@lib/rate-limit";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { bucket: "claude-search", limit: 5, windowMs: 60_000 });
+  if (!limited.ok) {
+    const retryAfter = Math.max(1, Math.ceil((limited.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
+
   const apiKey =
     req.headers.get("x-api-key") || process.env.ANTHROPIC_API_KEY;
 

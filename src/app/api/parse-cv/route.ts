@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { rateLimit } from "@lib/rate-limit";
 
 const USER_DIR = path.join(process.cwd(), "data", "user");
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { bucket: "parse-cv", limit: 10, windowMs: 60_000 });
+  if (!limited.ok) {
+    const retryAfter = Math.max(1, Math.ceil((limited.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
