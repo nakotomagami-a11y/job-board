@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { REGIONS, SENIORITIES, TIMEFRAMES } from "@shared/config/filters";
 import type { Filters, StatusFilter } from "../hooks/use-filters";
 import type { Job } from "@shared/types/job";
+
+const STATUS_OPTIONS: StatusFilter[] = ["All", "Active", "Applied", "Rejected"];
 
 interface FilterBarProps {
   filters: Filters;
@@ -45,38 +47,46 @@ function FilterGroup({
 export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const STATUS_OPTIONS: StatusFilter[] = ["All", "Active", "Applied", "Rejected"];
+  // Status counts and dynamic option sets only need to recompute when jobs change.
+  const { statusCounts, categories, companyTypes, roleTypes } = useMemo(() => {
+    let applied = 0;
+    let rejected = 0;
+    let active = 0;
+    const categorySet = new Set<string>();
+    const companyTypeSet = new Set<string>();
+    const roleTypeSet = new Set<string>();
 
-  const statusCounts = {
-    Applied: jobs.filter((j) => j.applied).length,
-    Rejected: jobs.filter((j) => j.rejected).length,
-    Active: jobs.filter((j) => !j.applied && !j.rejected).length,
-  };
+    for (const j of jobs) {
+      if (j.applied) applied++;
+      else if (j.rejected) rejected++;
+      else active++;
+      categorySet.add(j.category);
+      companyTypeSet.add(j.companyType);
+      roleTypeSet.add(j.roleType);
+    }
 
-  const hasActiveFilters =
-    filters.region !== "All" ||
-    filters.roleType !== "All" ||
-    filters.seniority !== "All" ||
-    filters.companyType !== "All" ||
-    filters.category !== "All" ||
-    filters.timeframeDays !== 999 ||
-    filters.status !== "All";
+    return {
+      statusCounts: { Applied: applied, Rejected: rejected, Active: active },
+      categories: ["All", ...Array.from(categorySet).sort()],
+      companyTypes: ["All", ...Array.from(companyTypeSet).sort()],
+      roleTypes: ["All", ...Array.from(roleTypeSet).sort()],
+    };
+  }, [jobs]);
 
-  // Build dynamic options from actual job data
-  const categories = ["All", ...Array.from(new Set(jobs.map((j) => j.category))).sort()];
-  const companyTypes = ["All", ...Array.from(new Set(jobs.map((j) => j.companyType))).sort()];
-  const roleTypes = ["All", ...Array.from(new Set(jobs.map((j) => j.roleType))).sort()];
-
-  // Count active filters for badge
-  const activeCount = [
-    filters.region !== "All",
-    filters.roleType !== "All",
-    filters.seniority !== "All",
-    filters.companyType !== "All",
-    filters.category !== "All",
-    filters.timeframeDays !== 999,
-    filters.status !== "All",
-  ].filter(Boolean).length;
+  // Active filter accounting only depends on the filters object.
+  const { hasActiveFilters, activeCount } = useMemo(() => {
+    const flags = [
+      filters.region !== "All",
+      filters.roleType !== "All",
+      filters.seniority !== "All",
+      filters.companyType !== "All",
+      filters.category !== "All",
+      filters.timeframeDays !== 999,
+      filters.status !== "All",
+    ];
+    const count = flags.filter(Boolean).length;
+    return { hasActiveFilters: count > 0, activeCount: count };
+  }, [filters]);
 
   // Primary filters always visible: Region + Timeframe
   // Secondary filters behind "More filters" toggle
