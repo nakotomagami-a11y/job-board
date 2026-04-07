@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import type { WebSearchTool20250305 } from "@anthropic-ai/sdk/resources/messages";
 import { rateLimit } from "@lib/rate-limit";
+import { sanitizeJobs } from "@lib/sanitize-job";
+import type { Job } from "@shared/types/job";
 
 export const maxDuration = 60;
 
@@ -133,8 +135,8 @@ Generate unique IDs using format: companyname-shortdesc-4randomchars (lowercase,
     if (jsonMatch) {
       try {
         const jobs = JSON.parse(jsonMatch[0]);
-        // Validate and clean up jobs
-        const validJobs = jobs
+        // Validate, normalize, and sanitize jobs (drop unsafe URLs / strip HTML)
+        const enriched = jobs
           .filter(
             (j: Record<string, unknown>) =>
               j.title && j.company && j.url && typeof j.url === "string"
@@ -147,7 +149,8 @@ Generate unique IDs using format: companyname-shortdesc-4randomchars (lowercase,
             id:
               j.id ||
               `${String(j.company).toLowerCase().replace(/\s+/g, "-")}-${Math.random().toString(36).substring(2, 6)}`,
-          }));
+          })) as Job[];
+        const validJobs = sanitizeJobs(enriched);
         return NextResponse.json({ jobs: validJobs, count: validJobs.length });
       } catch {
         return NextResponse.json({
