@@ -104,7 +104,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       setActionMsg(e instanceof Error ? e.message : "Command failed");
     }
 
-    scheduleStatusClear(8000);
+    scheduleStatusClear(30000);
   };
 
   const handleCountrySearch = async (countries: { value: string; label: string; name: string }[]) => {
@@ -140,7 +140,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       setActionMsg(e instanceof Error ? e.message : "Local search failed");
     }
 
-    scheduleStatusClear(15000);
+    scheduleStatusClear(30000);
   };
 
   const handleCompanySearch = async (companies: { name: string; careersUrl: string }[]) => {
@@ -174,7 +174,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       setActionMsg(e instanceof Error ? e.message : "Company search failed");
     }
 
-    scheduleStatusClear(15000);
+    scheduleStatusClear(30000);
   };
 
   const handleConfiguredSearch = async (config: SearchParams) => {
@@ -213,7 +213,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       setActionMsg(e instanceof Error ? e.message : "Search failed");
     }
 
-    scheduleStatusClear(8000);
+    scheduleStatusClear(30000);
   };
 
   const isRunning = actionStatus === "running";
@@ -278,7 +278,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           }
           setActionMsg("Batch state reset — next search starts from board #1");
           setActionStatus("done");
-          scheduleStatusClear(4000);
+          scheduleStatusClear(8000);
         }}
           disabled={isRunning} style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1 }}>
           🔄 Reset Batch
