@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ProfileProvider } from "@shared/providers/profile-provider";
+import { QueryProvider } from "@shared/providers/query-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +23,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ProfileProvider>{children}</ProfileProvider>
+        <QueryProvider>
+          <ProfileProvider>{children}</ProfileProvider>
+        </QueryProvider>
       </body>
     </html>
   );
