@@ -1,8 +1,60 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import Select from "react-select";
+import { useRef, useState, useMemo, type CSSProperties } from "react";
+import Select, { type MenuListProps } from "react-select";
 import worldCountries from "world-countries";
+
+// Custom virtualized MenuList: renders only the rows in view + a small
+// overscan, so opening the dropdown with ~250 countries doesn't mount 250
+// DOM nodes. No react-window dependency needed.
+const ROW_HEIGHT = 36;
+const VIEWPORT_HEIGHT = 200;
+const OVERSCAN = 4;
+
+function VirtualMenuList<Option, IsMulti extends boolean = false>(
+  props: MenuListProps<Option, IsMulti>
+) {
+  const { children, maxHeight } = props;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const items = Array.isArray(children) ? children : children ? [children] : [];
+  const total = items.length;
+  const viewport = Math.min(maxHeight ?? VIEWPORT_HEIGHT, VIEWPORT_HEIGHT);
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const visibleCount = Math.ceil(viewport / ROW_HEIGHT) + OVERSCAN * 2;
+  const endIndex = Math.min(total, startIndex + visibleCount);
+  const visible = items.slice(startIndex, endIndex);
+  const offset = startIndex * ROW_HEIGHT;
+
+  const containerStyle: CSSProperties = {
+    maxHeight: viewport,
+    overflowY: "auto",
+    padding: 4,
+  };
+  const spacerStyle: CSSProperties = {
+    height: total * ROW_HEIGHT,
+    position: "relative",
+  };
+  const layerStyle: CSSProperties = {
+    position: "absolute",
+    top: offset,
+    left: 0,
+    right: 0,
+  };
+
+  return (
+    <div
+      ref={scrollRef}
+      style={containerStyle}
+      onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+    >
+      <div style={spacerStyle}>
+        <div style={layerStyle}>{visible}</div>
+      </div>
+    </div>
+  );
+}
 
 interface CountryOption {
   value: string;
@@ -71,6 +123,7 @@ export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
             onChange={(val) => setSelected([...(val || [])])}
             placeholder="Search for a country..."
             isDisabled={isSearching}
+            components={{ MenuList: VirtualMenuList }}
             filterOption={(option, input) => {
               if (!input) return true;
               return option.data.name.toLowerCase().includes(input.toLowerCase());
@@ -95,7 +148,7 @@ export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
               menuList: (base) => ({
                 ...base,
                 maxHeight: 200,
-                padding: 4,
+                padding: 0,
               }),
               option: (base, state) => ({
                 ...base,
@@ -104,7 +157,10 @@ export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: "0.85rem",
+                height: 36,
+                lineHeight: "20px",
                 padding: "8px 12px",
+                boxSizing: "border-box",
                 "&:active": { background: "rgba(56,189,248,0.15)" },
               }),
               multiValue: (base) => ({
