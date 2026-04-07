@@ -1,20 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import type { Job } from "@shared/types/job";
-
-interface Source {
-  name: string;
-  url: string;
-  enabled: boolean;
-}
+import { useSources } from "../hooks/use-sources";
 
 interface SourcesPanelProps {
   jobs: Job[];
 }
 
 export function SourcesPanel({ jobs }: SourcesPanelProps) {
-  const [sources, setSources] = useState<Source[]>([]);
+  const { sources, error, refetch, save } = useSources();
   const [expanded, setExpanded] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -29,36 +24,19 @@ export function SourcesPanel({ jobs }: SourcesPanelProps) {
   const sortedSourceCounts = Object.entries(sourceCounts)
     .sort((a, b) => b[1] - a[1]);
 
-  // Load configured sources
-  useEffect(() => {
-    fetch("/api/sources")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setSources(data); })
-      .catch(() => {});
-  }, []);
-
-  const saveSources = useCallback(async (updated: Source[]) => {
-    setSources(updated);
-    await fetch("/api/sources", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    });
-  }, []);
-
   const toggleSource = (idx: number) => {
     const updated = [...sources];
     updated[idx] = { ...updated[idx], enabled: !updated[idx].enabled };
-    saveSources(updated);
+    save(updated);
   };
 
   const removeSource = (idx: number) => {
-    saveSources(sources.filter((_, i) => i !== idx));
+    save(sources.filter((_, i) => i !== idx));
   };
 
   const addSource = () => {
     if (!newName.trim()) return;
-    saveSources([...sources, { name: newName.trim(), url: newUrl.trim(), enabled: true }]);
+    save([...sources, { name: newName.trim(), url: newUrl.trim(), enabled: true }]);
     setNewName("");
     setNewUrl("");
   };
@@ -81,6 +59,19 @@ export function SourcesPanel({ jobs }: SourcesPanelProps) {
 
       {expanded && (
         <div style={{ marginTop: 12, maxWidth: 560, margin: "12px auto 0" }}>
+          {error && (
+            <div style={{
+              padding: "8px 12px", marginBottom: 12, borderRadius: 8,
+              background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
+              color: "#f87171", fontSize: "0.78rem",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+            }}>
+              <span>Couldn&apos;t load sources: {error instanceof Error ? error.message : "Unknown error"}</span>
+              <button className="filter-btn" style={{ fontSize: "0.72rem", padding: "2px 8px" }} onClick={() => refetch()}>
+                Retry
+              </button>
+            </div>
+          )}
           {/* Job sources from actual data */}
           <div style={{ marginBottom: 20 }}>
             <div style={{
