@@ -19,7 +19,7 @@ function FilterGroup({
   onChange,
 }: {
   label: string;
-  options: string[];
+  options: readonly string[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -87,7 +87,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
         <div style={{ flex: 1, minWidth: 200 }}>
           <FilterGroup
             label="Region"
-            options={REGIONS as unknown as string[]}
+            options={REGIONS}
             value={filters.region}
             onChange={(v) => setFilter("region", v)}
           />
@@ -176,7 +176,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
           />
           <FilterGroup
             label="Seniority"
-            options={SENIORITIES as unknown as string[]}
+            options={SENIORITIES}
             value={filters.seniority}
             onChange={(v) => setFilter("seniority", v)}
           />

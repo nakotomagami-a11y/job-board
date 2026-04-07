@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import type { WebSearchTool20250305 } from "@anthropic-ai/sdk/resources/messages";
 
 export const maxDuration = 60;
 
@@ -102,8 +103,9 @@ Generate unique IDs using format: companyname-shortdesc-4randomchars (lowercase,
           content: `Search the web RIGHT NOW for the latest frontend/mobile developer job openings. I need real, active listings with working application links. Search as many sources as you can and find at least 15 positions.${focusArea ? `\n\nSpecific focus: ${focusArea}` : ""}`,
         },
       ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tools: [{ type: "web_search_20250305", name: "web_search" }] as any,
+      tools: [
+        { type: "web_search_20250305", name: "web_search" } satisfies WebSearchTool20250305,
+      ],
     });
 
     // Extract JSON from the response (may be mixed with web_search tool results)
