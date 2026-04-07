@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
+import { readFileSync } from "fs";
 import path from "path";
 import {
   TIER1_BOARDS, TIER2_BOARDS, TIER3_BOARDS,
-  TIER4_BOARDS, TIER5_BOARDS, TIER6_BOARDS, TIER7_BOARDS,
   ALL_BOARDS,
 } from "@shared/config/priority-boards";
 import { rateLimit } from "@lib/rate-limit";
@@ -13,7 +13,6 @@ export const maxDuration = 60;
 const PROJECT_ROOT = process.cwd().replace(/\\/g, "/");
 const USER_DIR = path.join(process.cwd(), "data", "user");
 const JOBS_PATH = path.join(USER_DIR, "jobs.json");
-const PROFILE_PATH = path.join(USER_DIR, "profile.json");
 const PENDING_PATH = path.join(USER_DIR, "pending-search.json");
 const BATCH_PATH = path.join(USER_DIR, "search-batch-state.json");
 
@@ -52,18 +51,13 @@ function withBatchLock<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function getProfile(): Record<string, unknown> {
-  try { return JSON.parse(require("fs").readFileSync(PROFILE_PATH, "utf-8")); }
-  catch { return {}; }
-}
-
 function getExistingIds(): string[] {
-  try { return JSON.parse(require("fs").readFileSync(JOBS_PATH, "utf-8")).map((j: { id: string }) => j.id); }
+  try { return JSON.parse(readFileSync(JOBS_PATH, "utf-8")).map((j: { id: string }) => j.id); }
   catch { return []; }
 }
 
 function getBatchState(): BatchState | null {
-  try { return JSON.parse(require("fs").readFileSync(BATCH_PATH, "utf-8")); }
+  try { return JSON.parse(readFileSync(BATCH_PATH, "utf-8")); }
   catch { return null; }
 }
 
