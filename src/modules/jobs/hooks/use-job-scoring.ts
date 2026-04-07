@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Job } from "@shared/types/job";
 import type { UserProfile } from "@shared/types/profile";
 import { SCORING_WEIGHTS, SENIORITY_ORDER } from "@shared/config/scoring";
+import { parseSalary } from "@lib/salary";
 
 function scoreJob(job: Job, profile: UserProfile): number {
   let total = 0;
@@ -109,16 +110,12 @@ function scoreJob(job: Job, profile: UserProfile): number {
 
   // Salary match (5 pts)
   if (profile.salaryRange && job.salary) {
-    const salaryNums = job.salary.match(/[\d,]+/g);
-    if (salaryNums && salaryNums.length >= 1) {
-      const jobMin = parseInt(salaryNums[0].replace(/,/g, ""));
-      const jobMax = salaryNums[1]
-        ? parseInt(salaryNums[1].replace(/,/g, ""))
-        : jobMin;
+    const range = parseSalary(job.salary);
+    if (range) {
       const profileMin = profile.salaryRange.min;
       const profileMax = profile.salaryRange.max;
 
-      if (jobMax >= profileMin && jobMin <= profileMax) {
+      if (range.max >= profileMin && range.min <= profileMax) {
         total += SCORING_WEIGHTS.salaryMatch;
       }
     }
