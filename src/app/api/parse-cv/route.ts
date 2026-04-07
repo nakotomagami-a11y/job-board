@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { extractText, getDocumentProxy } from "unpdf";
 import { rateLimit } from "@lib/rate-limit";
 
 const USER_DIR = path.join(process.cwd(), "data", "user");
@@ -24,15 +25,14 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(buffer);
+    const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer));
+    // mergePages joins pages with \n\n so the downstream Claude analyzer sees
+    // a single contiguous string, matching the previous pdf-parse output.
+    const { text, totalPages } = await extractText(pdf, { mergePages: true });
 
     // Save raw CV text for Claude Code to analyze
     await fs.mkdir(USER_DIR, { recursive: true });
-    await fs.writeFile(path.join(USER_DIR, "cv-raw.txt"), data.text);
+    await fs.writeFile(path.join(USER_DIR, "cv-raw.txt"), text);
 
     // Clear any previous analysis so the app knows to wait for new one
     try {
@@ -42,8 +42,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      text: data.text,
-      pages: data.numpages,
+      text,
+      pages: totalPages,
     });
   } catch (e) {
     console.error("PDF parse error:", e);
