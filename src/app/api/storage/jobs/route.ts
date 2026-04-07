@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import type { Job } from "@shared/types/job";
+import { mergeJobs } from "@lib/job-dedup";
 
 const USER_JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
 const SEED_JOBS_PATH = path.join(process.cwd(), "data", "jobs.json");
@@ -36,12 +37,10 @@ export async function POST(req: Request) {
   try {
     const newJobs = (await req.json()) as Job[];
     const existing = await getJobs();
-    const existingIds = new Set(existing.map((j) => j.id));
-    const toAdd = newJobs.filter((j) => !existingIds.has(j.id));
-    const all = [...existing, ...toAdd];
+    const { merged, added } = mergeJobs(existing, newJobs);
     await fs.mkdir(path.dirname(USER_JOBS_PATH), { recursive: true });
-    await fs.writeFile(USER_JOBS_PATH, JSON.stringify(all, null, 2));
-    return NextResponse.json({ added: toAdd.length, total: all.length });
+    await fs.writeFile(USER_JOBS_PATH, JSON.stringify(merged, null, 2));
+    return NextResponse.json({ added, total: merged.length });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
