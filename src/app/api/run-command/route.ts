@@ -253,20 +253,106 @@ export async function POST(req: Request) {
   }
 }
 
+// Status codes that mean "this listing is gone for good".
+// 5xx, 429, network errors etc. are treated as transient and the job is kept.
+const DEAD_STATUSES = new Set([404, 410]);
+const HEALTH_TIMEOUT_MS = 6000;
+const HEALTH_CONCURRENCY = 8;
+
+interface AuditedJob {
+  postedDate: string;
+  url?: string;
+  applied?: boolean;
+}
+
+async function checkLink(url: string): Promise<"alive" | "dead"> {
+  try {
+    new URL(url);
+  } catch {
+    return "dead";
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
+  try {
+    let res = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: ctrl.signal,
+      headers: { "User-Agent": "Mozilla/5.0 JobHuntLinkCheck/1.0" },
+    });
+    // Some sites reject HEAD with 405/403 — retry with GET before declaring dead.
+    if (res.status === 405 || res.status === 403) {
+      res = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        signal: ctrl.signal,
+        headers: { "User-Agent": "Mozilla/5.0 JobHuntLinkCheck/1.0" },
+      });
+    }
+    return DEAD_STATUSES.has(res.status) ? "dead" : "alive";
+  } catch {
+    // Network error / timeout — treat as alive (don't punish transient failures).
+    return "alive";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Total budget for the link-check phase. Anything still pending when this
+// elapses is left as alive — we'd rather under-prune than nuke valid jobs.
+const HEALTH_BUDGET_MS = 45_000;
+
+async function checkLinksParallel(jobs: AuditedJob[]): Promise<Set<number>> {
+  const deadIndices = new Set<number>();
+  const deadline = Date.now() + HEALTH_BUDGET_MS;
+  let cursor = 0;
+  const workers: Promise<void>[] = [];
+  for (let i = 0; i < HEALTH_CONCURRENCY; i++) {
+    workers.push((async () => {
+      while (Date.now() < deadline) {
+        const idx = cursor++;
+        if (idx >= jobs.length) return;
+        const job = jobs[idx];
+        if (!job.url) continue;
+        const result = await checkLink(job.url);
+        if (result === "dead") deadIndices.add(idx);
+      }
+    })());
+  }
+  await Promise.all(workers);
+  return deadIndices;
+}
+
 async function handleAudit() {
   try {
-    const jobs = JSON.parse(await fs.readFile(JOBS_PATH, "utf-8"));
+    const jobs: AuditedJob[] = JSON.parse(await fs.readFile(JOBS_PATH, "utf-8"));
     const now = new Date();
-    const recent = jobs.filter((j: { postedDate: string }) => {
+
+    // Step 1: drop anything older than 30 days.
+    const recent = jobs.filter((j) => {
       const days = Math.floor((now.getTime() - new Date(j.postedDate).getTime()) / (1000 * 60 * 60 * 24));
       return days <= 30;
     });
-    const removed = jobs.length - recent.length;
-    await fs.writeFile(JOBS_PATH, JSON.stringify(recent, null, 2));
+    const removedByDate = jobs.length - recent.length;
+
+    // Step 2: link health check on the survivors. Skip jobs the user already
+    // applied to — even if the listing is gone, we want to keep the record.
+    const checkable = recent.map((j, i) => ({ job: j, originalIndex: i }))
+      .filter(({ job }) => !job.applied && !!job.url);
+    const deadCheckable = await checkLinksParallel(checkable.map((c) => c.job));
+    const deadOriginalIndices = new Set(
+      [...deadCheckable].map((i) => checkable[i].originalIndex)
+    );
+
+    const alive = recent.filter((_, i) => !deadOriginalIndices.has(i));
+    const removedByLink = recent.length - alive.length;
+
+    await fs.writeFile(JOBS_PATH, JSON.stringify(alive, null, 2));
     return NextResponse.json({
-      message: `Removed ${removed} jobs older than 30 days. ${recent.length} remaining.`,
-      removedByDate: removed,
-      remaining: recent.length,
+      message: `Removed ${removedByDate} old + ${removedByLink} dead links. ${alive.length} remaining.`,
+      removedByDate,
+      removedByLink,
+      remaining: alive.length,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
