@@ -241,12 +241,14 @@ export function StepPreferences({
   const [claudeAnalysis, setClaudeAnalysis] = useState<CvAnalysis>({});
 
   useEffect(() => {
-    fetch("/api/cv-analysis")
+    const ctrl = new AbortController();
+    fetch("/api/cv-analysis", { signal: ctrl.signal })
       .then((r) => r.json())
       .then((data) => {
         if (data) setClaudeAnalysis(data);
       })
       .catch(() => {});
+    return () => ctrl.abort();
   }, []);
 
   // Use Claude's suggestions first, then fall back to hardcoded
