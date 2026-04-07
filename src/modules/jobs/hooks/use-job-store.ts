@@ -1,82 +1,117 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Job } from "@shared/types/job";
 import { API } from "@lib/constants";
+import { queryKeys } from "@shared/query-keys";
+
+async function fetchJobs(): Promise<Job[]> {
+  const res = await fetch(API.jobs);
+  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
 
 export function useJobStore() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const qc = useQueryClient();
 
-  const fetchJobs = useCallback(async () => {
-    try {
-      const res = await fetch(API.jobs);
-      const data = await res.json();
-      setJobs(data || []);
-    } catch {
-      setJobs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const query = useQuery({
+    queryKey: queryKeys.jobs,
+    queryFn: fetchJobs,
+  });
 
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
-
-  const addJobs = useCallback(
-    async (newJobs: Job[]) => {
+  const addJobs = useMutation({
+    mutationFn: async (newJobs: Job[]) => {
       const res = await fetch(API.jobs, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newJobs),
       });
-      const result = await res.json();
-      if (result.added > 0) {
-        await fetchJobs();
-      }
-      return result;
+      if (!res.ok) throw new Error("Failed to add jobs");
+      return res.json();
     },
-    [fetchJobs]
-  );
+    onSuccess: (result) => {
+      if (result?.added > 0) qc.invalidateQueries({ queryKey: queryKeys.jobs });
+    },
+  });
 
-  const updateJob = useCallback(
-    async (id: string, updates: Partial<Job>) => {
-      await fetch(API.jobs, {
+  const updateJob = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Job> }) => {
+      const res = await fetch(API.jobs, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...updates }),
       });
-      setJobs((prev) =>
-        prev.map((j) => (j.id === id ? { ...j, ...updates } : j))
-      );
+      if (!res.ok) throw new Error("Failed to update job");
+      return { id, updates };
     },
-    []
-  );
+    onMutate: async ({ id, updates }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.jobs });
+      const previous = qc.getQueryData<Job[]>(queryKeys.jobs);
+      qc.setQueryData<Job[]>(queryKeys.jobs, (old) =>
+        old ? old.map((j) => (j.id === id ? { ...j, ...updates } : j)) : old
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKeys.jobs, ctx.previous);
+    },
+  });
 
-  const deleteJob = useCallback(
-    async (id: string) => {
-      await fetch(API.jobs, {
+  const deleteJob = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(API.jobs, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      setJobs((prev) => prev.filter((j) => j.id !== id));
+      if (!res.ok) throw new Error("Failed to delete job");
+      return id;
     },
-    []
-  );
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: queryKeys.jobs });
+      const previous = qc.getQueryData<Job[]>(queryKeys.jobs);
+      qc.setQueryData<Job[]>(queryKeys.jobs, (old) =>
+        old ? old.filter((j) => j.id !== id) : old
+      );
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKeys.jobs, ctx.previous);
+    },
+  });
 
-  const replaceAll = useCallback(
-    async (newJobs: Job[]) => {
-      await fetch(API.jobs, {
+  const replaceAll = useMutation({
+    mutationFn: async (newJobs: Job[]) => {
+      const res = await fetch(API.jobs, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newJobs),
       });
-      setJobs(newJobs);
+      if (!res.ok) throw new Error("Failed to replace jobs");
+      return newJobs;
     },
-    []
-  );
+    onSuccess: (newJobs) => {
+      qc.setQueryData(queryKeys.jobs, newJobs);
+    },
+  });
 
-  return { jobs, loading, addJobs, updateJob, deleteJob, replaceAll, refetch: fetchJobs };
+  return {
+    jobs: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error,
+    addJobs: (jobs: Job[]) => addJobs.mutateAsync(jobs),
+    updateJob: async (id: string, updates: Partial<Job>): Promise<void> => {
+      await updateJob.mutateAsync({ id, updates });
+    },
+    deleteJob: async (id: string): Promise<void> => {
+      await deleteJob.mutateAsync(id);
+    },
+    replaceAll: async (jobs: Job[]): Promise<void> => {
+      await replaceAll.mutateAsync(jobs);
+    },
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
 }
