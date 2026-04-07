@@ -42,6 +42,16 @@ interface BatchState {
   filters: string;
 }
 
+// Process-wide mutex so two concurrent batch searches can't both read the
+// same `search-batch-state.json`, both compute the next batch, and both write
+// — leaving the second writer's view of "remaining boards" stale.
+let batchMutex: Promise<unknown> = Promise.resolve();
+function withBatchLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = batchMutex.then(fn, fn);
+  batchMutex = next.catch(() => {});
+  return next;
+}
+
 function getProfile(): Record<string, unknown> {
   try { return JSON.parse(require("fs").readFileSync(PROFILE_PATH, "utf-8")); }
   catch { return {}; }
@@ -193,7 +203,19 @@ export async function POST(req: Request) {
     let batchInfo: BatchState | null = null;
 
     if (command === "search") {
-      const result = buildSearchPrompt(searchConfig);
+      const result = await withBatchLock(async () => {
+        const built = buildSearchPrompt(searchConfig);
+        // Persist the new batch state inside the lock so a concurrent caller
+        // sees the updated `searchedBoards` before computing its own batch.
+        await fs.writeFile(BATCH_PATH, JSON.stringify(built.batchState, null, 2));
+        // Auto-reset once every board in the rotation has been searched, so
+        // the next "search" naturally starts a fresh sweep instead of
+        // returning an empty board list.
+        if (built.batchState.remainingBoards.length === 0) {
+          await fs.writeFile(BATCH_PATH, "{}");
+        }
+        return built;
+      });
       prompt = result.prompt;
       batchInfo = result.batchState;
       searchType = "search";
@@ -207,14 +229,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unknown command" }, { status: 400 });
     }
 
-    // Save prompt and pending search
+    // Save prompt and pending search (batch state is written inside the lock above)
     const promptPath = path.join(USER_DIR, "command-prompt.txt");
     await fs.writeFile(promptPath, prompt);
-
-    // Save batch state if this is a batch search
-    if (batchInfo) {
-      await fs.writeFile(BATCH_PATH, JSON.stringify(batchInfo, null, 2));
-    }
 
     await fs.writeFile(PENDING_PATH, JSON.stringify({
       type: searchType,
