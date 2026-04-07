@@ -15,13 +15,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const apiKey =
-    req.headers.get("x-api-key") || process.env.ANTHROPIC_API_KEY;
+  // API key must come from server env, never from a request header. Accepting
+  // a client-supplied x-api-key would let any caller substitute their own key
+  // or echo a logged one back. The Anthropic key lives in process.env only.
+  const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "No API key provided" },
-      { status: 401 }
+      { error: "ANTHROPIC_API_KEY is not configured on the server" },
+      { status: 500 }
     );
   }
 

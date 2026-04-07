@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 export async function POST(req: Request) {
-  const apiKey =
-    req.headers.get("x-api-key") || process.env.ANTHROPIC_API_KEY;
+  // API key must come from server env, never from a client header.
+  const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: "No API key provided" },
-      { status: 401 }
+      { error: "ANTHROPIC_API_KEY is not configured on the server" },
+      { status: 500 }
     );
   }
 
