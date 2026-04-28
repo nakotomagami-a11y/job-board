@@ -51,13 +51,17 @@ cd job-board
 yarn install        # or npm / pnpm
 ```
 
-### 2. Install Playwright Chromium (one-time, for `/api/scrape`)
+### 2. Playwright Chromium (auto-installed)
+
+Playwright's headless Chromium is downloaded automatically by the `postinstall` hook (powers `/api/scrape` for JS-heavy boards: Himalayas, Wellfound, Working Nomads, etc.). It's about a 200 MB download on first install.
+
+To skip it (e.g. in CI or if you don't need JS-rendered boards):
 
 ```bash
-npx playwright install chromium
+SKIP_PLAYWRIGHT_BROWSER_INSTALL=1 yarn install
 ```
 
-This downloads the headless browser used to render JS-heavy boards (Himalayas, Wellfound, Working Nomads, etc.). Skip it and `/api/scrape` will fall back gracefully — but you'll lose coverage on those boards.
+You can install it later with `npx playwright install chromium`. Without it, `/api/scrape` returns a clear error rather than crashing.
 
 ### 3. Set up your user data folder
 
