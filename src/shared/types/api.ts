@@ -28,10 +28,3 @@ export interface JobsDeleteResponse {
 export type ProfileGetResponse = UserProfile | null;
 export type ProfilePutResponse = UserProfile;
 
-// /api/claude/search
-export interface ClaudeSearchResponse {
-  jobs: Job[];
-  count: number;
-  error?: string;
-  raw?: string;
-}

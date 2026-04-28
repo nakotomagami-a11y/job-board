@@ -62,7 +62,7 @@ export interface Job {
   category: Category;
   description?: string;
   matchScore?: number;
-  sourceType?: "seed" | "claude-search" | "manual";
+  sourceType?: "agent" | "manual";
   applied?: boolean;
   appliedDate?: string; // ISO date string YYYY-MM-DD
   rejected?: boolean;

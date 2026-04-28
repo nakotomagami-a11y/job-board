@@ -2,30 +2,26 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import type { Job } from "@shared/types/job";
+import type { UserProfile } from "@shared/types/profile";
 import { mergeJobs } from "@lib/job-dedup";
 import { sanitizeJobs } from "@lib/sanitize-job";
+import { recordSubmission, recordRejection } from "@lib/board-stats";
+import { rubricReject } from "@lib/score-job";
 
 const USER_JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
-const SEED_JOBS_PATH = path.join(process.cwd(), "data", "jobs.json");
+const PROFILE_PATH = path.join(process.cwd(), "data", "user", "profile.json");
+
+async function getProfile(): Promise<UserProfile | null> {
+  try { return JSON.parse(await fs.readFile(PROFILE_PATH, "utf-8")) as UserProfile; }
+  catch { return null; }
+}
 
 async function getJobs(): Promise<Job[]> {
   try {
     const data = await fs.readFile(USER_JOBS_PATH, "utf-8");
     return JSON.parse(data) as Job[];
   } catch {
-    // First launch — seed from starter data
-    try {
-      const seed = await fs.readFile(SEED_JOBS_PATH, "utf-8");
-      const jobs = (JSON.parse(seed) as Job[]).map((j) => ({
-        ...j,
-        sourceType: j.sourceType || ("seed" as const),
-      }));
-      await fs.mkdir(path.dirname(USER_JOBS_PATH), { recursive: true });
-      await fs.writeFile(USER_JOBS_PATH, JSON.stringify(jobs, null, 2));
-      return jobs;
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 
@@ -38,10 +34,51 @@ export async function POST(req: Request) {
   try {
     const newJobs = sanitizeJobs((await req.json()) as Job[]);
     const existing = await getJobs();
-    const { merged, added } = mergeJobs(existing, newJobs);
+    const existingIds = new Set(existing.map((j) => j.id));
+
+    // Apply the hard-reject rubric BEFORE dedup. Anything failing it never
+    // reaches storage — keeps the agent honest even if its filtering is loose.
+    // Skip the rubric when no profile is set (e.g. fresh install) so we don't
+    // throw away legitimate jobs before onboarding completes.
+    const profile = await getProfile();
+    const rubricRejected: { id: string; reason: string }[] = [];
+    const accepted: Job[] = profile
+      ? newJobs.filter((j) => {
+          const reason = rubricReject(j, profile);
+          if (reason) {
+            rubricRejected.push({ id: j.id, reason });
+            return false;
+          }
+          return true;
+        })
+      : newJobs;
+
+    const { merged, added } = mergeJobs(existing, accepted);
+
+    // Per-board breakdown — submitted = everything we received from that board,
+    // kept = the subset that survived rubric + dedupe and made it into merged.
+    const perBoard: Record<string, { submitted: number; kept: number }> = {};
+    for (const j of newJobs) {
+      const src = j.source || "unknown";
+      perBoard[src] ??= { submitted: 0, kept: 0 };
+      perBoard[src].submitted += 1;
+    }
+    for (const j of merged) {
+      if (existingIds.has(j.id)) continue;
+      const src = j.source || "unknown";
+      perBoard[src] ??= { submitted: 0, kept: 0 };
+      perBoard[src].kept += 1;
+    }
+
     await fs.mkdir(path.dirname(USER_JOBS_PATH), { recursive: true });
     await fs.writeFile(USER_JOBS_PATH, JSON.stringify(merged, null, 2));
-    return NextResponse.json({ added, total: merged.length });
+    await recordSubmission(perBoard);
+
+    return NextResponse.json({
+      added,
+      total: merged.length,
+      rejectedByRubric: rubricRejected.length,
+    });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -65,8 +102,16 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
     const existing = await getJobs();
+    const target = existing.find((j) => j.id === id);
     const jobs = existing.map((j) => (j.id === id ? { ...j, ...updates } : j));
     await fs.writeFile(USER_JOBS_PATH, JSON.stringify(jobs, null, 2));
+
+    // If the user just marked this job as rejected, bump the source's rejection
+    // counter — drives the auto-deprioritization signal in board-stats.
+    if (updates.rejected === true && target && !target.rejected) {
+      await recordRejection(target.source);
+    }
+
     return NextResponse.json({ updated: id });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

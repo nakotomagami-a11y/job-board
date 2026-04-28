@@ -47,7 +47,13 @@ Thumbs.db
 desktop.ini
 
 # ───── Claude Code workspace settings ─────
-.claude/
+# Project subagents (.claude/agents/) ARE checked in so everyone using the
+# repo gets the Haiku scraper. Local user settings (per-session permissions,
+# cache, history) stay out.
+.claude/settings.json
+.claude/settings.local.json
+.claude/cache/
+.claude/history/
 
 # ───── TypeScript ─────
 tsconfig.tsbuildinfo
