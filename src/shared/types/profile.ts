@@ -16,7 +16,6 @@ export interface UserProfile {
   };
   skills: string[];
   cvText?: string;
-  claudeApiKey?: string;
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;
