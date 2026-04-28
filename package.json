@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "prepare": "node ./scripts/install-git-hooks.mjs || true"
+    "prepare": "node ./scripts/install-git-hooks.mjs || true",
+    "postinstall": "node ./scripts/install-playwright-browsers.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.96.2",
