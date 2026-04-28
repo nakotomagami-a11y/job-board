@@ -231,6 +231,140 @@ function MultiSelect({
   );
 }
 
+/**
+ * Ordered region picker — array index 0 is the candidate's top priority.
+ *
+ * The search rotation in /api/run-command sorts boards by this order, and
+ * score-job.ts grades regionMatch graduated by index (top 20pts → listed
+ * 14pts → off-region remote 10pts). A regular MultiSelect can't express
+ * "Europe before Remote" — this component exposes per-row up/down/remove
+ * controls so the order is always user-driven.
+ */
+function RegionPriorityList({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: readonly string[];
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const available = options.filter((o) => o !== "All" && !selected.includes(o));
+
+  const move = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= selected.length) return;
+    const next = [...selected];
+    [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
+  };
+
+  const add = (region: string) => onChange([...selected, region]);
+  const remove = (region: string) => onChange(selected.filter((r) => r !== region));
+
+  const rowStyle = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "8px 12px",
+    background: "var(--surface, rgba(255,255,255,0.03))",
+    border: "1px solid var(--border, rgba(255,255,255,0.08))",
+    borderRadius: 6,
+    marginBottom: 6,
+  } as const;
+
+  const iconBtnStyle = {
+    background: "transparent",
+    border: "none",
+    color: "var(--text-muted)",
+    cursor: "pointer",
+    padding: "4px 8px",
+    fontSize: "0.9rem",
+    lineHeight: 1,
+  } as const;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={LABEL_STYLE}>{label}</div>
+      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 10 }}>
+        Top entry is your highest priority — searches and scoring weight it first.
+      </div>
+
+      {selected.length === 0 ? (
+        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: 10, fontStyle: "italic" }}>
+          No regions selected. Pick one or more below — order matters.
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          {selected.map((region, idx) => (
+            <div key={region} style={rowStyle}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", width: 24 }}>
+                  {idx + 1}.
+                </span>
+                <span style={{ fontWeight: 500 }}>{region}</span>
+                {idx === 0 && (
+                  <span style={{ fontSize: "0.7rem", color: "var(--accent, #38bdf8)", marginLeft: 4 }}>
+                    top priority
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 2 }}>
+                <button
+                  type="button"
+                  style={{ ...iconBtnStyle, opacity: idx === 0 ? 0.3 : 1 }}
+                  disabled={idx === 0}
+                  onClick={() => move(idx, -1)}
+                  aria-label={`Move ${region} up`}
+                  title="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  style={{ ...iconBtnStyle, opacity: idx === selected.length - 1 ? 0.3 : 1 }}
+                  disabled={idx === selected.length - 1}
+                  onClick={() => move(idx, 1)}
+                  aria-label={`Move ${region} down`}
+                  title="Move down"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  style={iconBtnStyle}
+                  onClick={() => remove(region)}
+                  aria-label={`Remove ${region}`}
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {available.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {available.map((region) => (
+            <button
+              key={region}
+              type="button"
+              className="filter-btn"
+              onClick={() => add(region)}
+            >
+              + {region}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StepPreferences({
   draft,
   updateDraft,
@@ -287,9 +421,9 @@ export function StepPreferences({
         </div>
       </div>
 
-      {/* Regions — keep as simple multi-select */}
-      <MultiSelect
-        label="Preferred Regions"
+      {/* Regions — ordered priority list. Top entry drives the search rotation. */}
+      <RegionPriorityList
+        label="Preferred Regions (priority order)"
         options={REGIONS}
         selected={draft.preferredRegions}
         onChange={(val) => updateDraft({ preferredRegions: val as Region[] })}
