@@ -180,8 +180,11 @@ function buildSearchPrompt(config?: SearchConfig): BuiltSearch {
     .map(boardLabel)
     .filter((label) => !lowYield.has(label));
 
+  // Note `existingBatch?.remainingBoards?.length` — getBatchState may return
+  // `{}` (an empty placeholder written by handleResetBatch / first-run wipes),
+  // so we can't rely on the outer object being truthy.
   let candidateBoards: string[];
-  if (existingBatch && existingBatch.remainingBoards.length > 0) {
+  if (existingBatch?.remainingBoards?.length) {
     candidateBoards = existingBatch.remainingBoards.slice(0, maxBoards * 2);
   } else {
     candidateBoards = allBoardsOrdered.slice(0, maxBoards * 2);
