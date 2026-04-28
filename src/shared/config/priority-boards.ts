@@ -170,18 +170,3 @@ export function sortBoardsByRegionPriority(
   });
 }
 
-// ── Backwards-compat string exports ─────────────────────────────────────
-// These are still consumed by run-command for the prompt text. Each is just
-// `boardLabel(b)` for the boards in that tier, in declaration order.
-
-const labelsForTier = (t: BoardTier): string[] =>
-  BOARDS.filter((b) => b.tier === t).map(boardLabel);
-
-export const TIER1_BOARDS = labelsForTier(1);
-export const TIER2_BOARDS = labelsForTier(2);
-export const TIER3_BOARDS = labelsForTier(3);
-export const TIER4_BOARDS = labelsForTier(4);
-export const TIER5_BOARDS = labelsForTier(5);
-export const TIER6_BOARDS = labelsForTier(6);
-export const TIER7_BOARDS = labelsForTier(7);
-export const ALL_BOARDS = BOARDS.map(boardLabel);
