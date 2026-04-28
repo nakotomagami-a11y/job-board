@@ -22,7 +22,6 @@ export const ATS_COMPANIES: AtsCompany[] = [
   { slug: "figma", name: "Figma", provider: "greenhouse", category: "SaaS / Dev Tools" },
   { slug: "notion", name: "Notion", provider: "greenhouse", category: "SaaS / Dev Tools" },
   { slug: "vercel", name: "Vercel", provider: "greenhouse", category: "SaaS / Dev Tools" },
-  { slug: "linear", name: "Linear", provider: "greenhouse", category: "SaaS / Dev Tools" },
   { slug: "ramp", name: "Ramp", provider: "greenhouse", category: "Fintech" },
   { slug: "anthropic", name: "Anthropic", provider: "greenhouse", category: "AI / ML" },
   { slug: "openai", name: "OpenAI", provider: "greenhouse", category: "AI / ML" },
