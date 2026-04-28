@@ -76,7 +76,7 @@ The app generates search prompts (saved to `data/user/command-prompt.txt` and `d
      "source": "board name",
      "remote": true,
      "category": "Gaming|Crypto / Web3|AI / ML|Fintech|SaaS / Dev Tools|E-Commerce|Other",
-     "sourceType": "claude-search",
+     "sourceType": "agent",
      "description": "1-2 sentence description"
    }
    ```
@@ -150,62 +150,179 @@ Automatically removes jobs older than 30 days. No Claude call needed — handled
 
 ---
 
-## 🌐 SEARCH METHOD: WebFetch vs Browser MCP
+## 🌐 SEARCH METHOD: layered fetching (cheapest first)
 
-When searching job boards, Claude uses two methods. **Always try WebFetch first.** Fall back to Browser MCP when WebFetch fails.
+Always go in this order — drop down only when the previous layer fails:
 
-### Method 1: WebFetch (default)
-Use `WebFetch` for all boards by default. It's fast and token-efficient.
+### Layer 0: Direct ATS APIs (no agent, no tokens, no scraping)
+**Always run this first.** Many companies use Greenhouse / Lever / Ashby / Workable, which expose public JSON job-board APIs:
 
-**WebFetch works well for:**
-- Boards with public REST APIs (e.g. Remotive: `https://remotive.com/api/remote-jobs?category=software-dev&search=react&limit=20`)
+```
+POST http://localhost:3000/api/board-fetch
+```
+
+(no body needed — fetches all companies in `src/shared/config/ats-companies.ts`).
+Returns ready-to-store jobs already filtered to frontend/mobile titles.
+Submit them to `/api/storage/jobs` and move on.
+
+Add new companies to `ats-companies.ts` as you discover them — every entry there means one less agent task forever.
+
+### Layer 1: WebFetch (cheap, no rendering)
+For everything outside the ATS list, default to `WebFetch`.
+
+**Works for:**
+- Boards with public REST APIs (Remotive, RemoteOK, Jobicy)
 - Static HTML job pages
-- Google search snippets to find individual job URLs
+- Google search snippets
 
-**WebFetch FAILS for:**
-- JS-rendered boards (React/Next.js apps) — returns empty HTML shell, no job data
-- Sites with bot protection (Cloudflare, Incapsula) — returns 403 or challenge page
-- Pages requiring login/subscription (e.g. FlexJobs)
+**Fails for:**
+- JS-rendered boards
+- Sites with bot protection (403 / Cloudflare challenges)
+- Pages requiring login/subscription
 
-### Method 2: Browser MCP (fallback)
-If WebFetch returns no job data, an empty page, a 403/404/410, or bot-challenge HTML, **connect to Browser MCP** using the `mcp__Claude_in_Chrome__` tools.
+### Layer 2: `/api/scrape` (Playwright, fallback for JS-rendered boards)
+When WebFetch returns empty HTML, a 403, or a bot-challenge:
 
-**How to switch to Browser MCP:**
 ```
-- Use mcp__Claude_in_Chrome__tabs_context_mcp to get an active tab
-- Use mcp__Claude_in_Chrome__navigate to load the job board URL
-- Use mcp__Claude_in_Chrome__get_page_text or read_page to extract job listings
-- Wait for JS to render if needed (mcp__Claude_in_Chrome__computer with wait)
+POST http://localhost:3000/api/scrape
+{
+  "url": "https://himalayas.app/jobs/worldwide?q=react",
+  "waitFor": "networkidle",
+  "waitForSelector": ".job-card",          // optional
+  "extractSelector": "article.job-card"    // optional — returns text only
+}
 ```
 
-**Browser MCP works for:**
-- JS-rendered boards (Himalayas, Wellfound, startup.jobs, YC Work at a Startup)
-- Sites returning 403 to headless fetchers but accessible in real browser
-- Pages that require scrolling/interaction to load more listings
+Returns either rendered HTML or extracted text. Replaces the old Browser MCP path — no Chrome app needed, deterministic, in-process.
 
-### Boards requiring Browser MCP (identified in past searches)
+Note: requires Chromium installed locally. One-time setup: `npx playwright install chromium`.
+
+### Cheap-execution rule: delegate the actual scrape to Haiku
+Do NOT run the WebFetch / `/api/scrape` calls from the parent agent yourself. Launch the **`job-board-scraper` subagent** (`.claude/agents/job-board-scraper.md`) — it runs on Haiku 4.5 and costs ~5× less. One subagent per board, in parallel when possible. The parent only orchestrates and merges the JSON arrays each subagent returns.
+
+### Boards needing /api/scrape (JS-rendered or guest-restricted)
 
 | Board | Reason | Notes |
 |-------|--------|-------|
-| Himalayas (himalayas.app) | JS-rendered, API 404 | ✅ Works via Browser MCP. URL pattern: `https://himalayas.app/jobs/worldwide?q=ROLE&experience=mid-level%2Csenior&type=full-time` — search react+developer, frontend+engineer, react+native separately. Use `/companies/SLUG/jobs/JOB-SLUG` URLs for job pages. |
-| Wellfound / AngelList (wellfound.com) | 403 on all direct pages | Good startup jobs |
-| startup.jobs (startup.jobs) | 403 on all direct pages | Good startup jobs |
+| Himalayas (himalayas.app) | JS-rendered | URL pattern: `https://himalayas.app/jobs/worldwide?q=ROLE&experience=mid-level%2Csenior&type=full-time` — search react+developer, frontend+engineer, react+native separately. Use `/companies/SLUG/jobs/JOB-SLUG` for job pages. |
+| Wellfound / AngelList (wellfound.com) | 403 on direct pages | Good startup jobs |
+| startup.jobs (startup.jobs) | 403 on direct pages | Good startup jobs |
 | Y Combinator Work at a Startup (workatastartup.com) | JS-rendered, most URLs 404 | YC-backed companies |
-| Remote.co (remote.co) | Timeouts (60s+) | Worldwide remote focus |
-| Working Nomads (workingnomads.com) | JS-rendered, no data via WebFetch | ✅ Works via Browser MCP. URL: `https://www.workingnomads.com/jobs?category=development&tag=react` — returns 50+ results. Apply URLs are at `/job/go/{ID}/` which redirect to external site. Use `document.querySelectorAll('a[href*="/jobs/"]')` to extract links. |
-| Otta / Welcome to the Jungle (welcometothejungle.com) | JS-rendered, returns no results | Otta was acquired by WTTJ |
+| Working Nomads (workingnomads.com) | JS-rendered | URL: `https://www.workingnomads.com/jobs?category=development&tag=react` — 50+ results. Apply URLs at `/job/go/{ID}/` redirect off-site. Extract via `a[href*="/jobs/"]`. |
+| Welcome to the Jungle (welcometothejungle.com) | JS-rendered | Use `/jobs?query=react&refinementList[contract_type][]=Full+time`. Now also hosts ex-Otta listings. |
+| Climatebase (climatebase.org/jobs) | JS-rendered | Climate-tech aggregator, growing frontend inventory |
 | The Muse (themuse.com) | Individual job URLs return 404 | Some worldwide listings |
-| Turing (turing.com) | Incapsula bot-blocking | Talent vetting platform |
-| Toptal (toptal.com) | 403 on all pages | Freelance talent network |
+| MeetFrank (meetfrank.com) | 403 to headless fetchers | Baltics-focused career app, public board is thin |
+| pracuj.pl | 403 to headless fetchers | Poland's largest general board, use Playwright |
+| javascriptjob.xyz | 403 to headless fetchers | Try Playwright before giving up |
 
-### Boards with structural issues (not bot-blocking)
+### Boards with structural issues
 
 | Board | Status | Notes |
 |-------|--------|-------|
-| FlexJobs (flexjobs.com) | Paywall — subscription required | Not worth Browser MCP |
-| Triplebyte (triplebyte.com) | **Defunct** — shut down March 2023, acquired by Karat | Remove from board list |
-| Hired (hired.com) | **Acquired** — redirects to LHH Recruitment Solutions (June 2024) | Changed from tech marketplace to broad HR |
 | Dice (dice.com) | US-centric — all listings require US location/timezone | Not useful for worldwide remote |
+| MeetFrank | Pivoted to anonymized matching app | Public board still exists but thin |
+
+### Removed from rotation (verified dead / acquired / single-company / paywalled)
+
+- **Triplebyte** — defunct (shut down March 2023, acquired by Karat)
+- **Turing** — single-company talent vetting / contractor marketplace
+- **Toptal** — single-company freelance network
+- **Contra** — single-company freelance work marketplace
+- **Otta** — redirects to Welcome to the Jungle (use WTTJ instead)
+- **Hired** — acquired by LHH/Adecco; redirects to lhh.com (HR services, no public board)
+- **CSS-Tricks Jobs** — wound down after DigitalOcean acquisition ("coming back soon" forever)
+- **Smashing Magazine Jobs** — page exists, no listings
+- **mljobs.org** — parked domain ("under construction")
+- **hireweb3.io/jobs** — 404
+- **IndieDragoness game-dev jobs** — stale curated page (2021 content, broken feeds)
+- **remote100k.com** — 0 jobs visible
+- **FlexJobs** — paywall-only (subscription required to view full jobs)
+
+---
+
+## 🔵 LINKEDIN: heavy-coverage strategy
+
+LinkedIn has by far the largest tech job inventory but the public web page hits a soft login wall after 60 results. **Use the guest API endpoint instead** — verified working without auth as of 2026-04-28.
+
+### Guest API endpoint (the workhorse)
+
+```
+https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={KW}&location={LOC}&start={N}
+```
+
+Returns an HTML fragment with ~10–25 `<li>` job-search-card elements per request. Each card contains `data-entity-urn="urn:li:jobPosting:{JOB_ID}"`, the title, company, location, and a relative posting date.
+
+For full job details + apply URL:
+```
+https://www.linkedin.com/jobs/view/{JOB_ID}
+```
+The off-site apply URL is in the page's JSON-LD `<script type="application/ld+json">` block (`hiringOrganization.url`) and on the "Apply on company website" button. Easy Apply postings have no off-site URL — record them as `apply_via_linkedin`.
+
+### Query parameters (verified)
+
+| Param | Meaning | Useful values |
+|---|---|---|
+| `keywords` | Search text (URL-encoded; `%22` for exact-phrase quotes) | `"react developer"`, `frontend engineer`, `"react native"` |
+| `location` | Human-readable | `Lithuania`, `European Union`, `Remote` |
+| `geoId` | LinkedIn internal geo ID (more reliable than `location` — resolve once via the search page redirect, then cache) | resolve dynamically; LinkedIn renumbers occasionally |
+| `f_TPR` | Time posted | `r86400` (24h), `r604800` (7d), `r2592000` (30d) |
+| `f_WT` | Work type | `1` onsite, `2` remote, `3` hybrid (comma-join: `f_WT=2,3`) |
+| `f_E` | Experience | `1` intern, `2` entry, `3` associate, `4` mid-senior, `5` director, `6` exec |
+| `f_JT` | Job type | `F` full-time, `P` part-time, `C` contract |
+| `start` | Pagination offset | `0, 25, 50, ...` |
+| `sortBy` | Sort | `DD` date desc, `R` relevance |
+
+### Pagination strategy
+
+- 25 results per page via `start=0,25,50,...`
+- Hard cap around `start=975` — beyond that returns empty fragments
+- Always sort `DD` (date desc) so the newest jobs come first; combine with `f_TPR=r86400` for daily sweeps to avoid hitting the cap
+- Stop when a page returns fewer than 25 cards or zero
+
+### Keyword combinations that move volume
+
+Run each as a separate query and dedupe by `JOB_ID`:
+- `"react developer"`, `react.js`, `"react native"`
+- `"frontend engineer"`, `"front-end developer"`, `"front end engineer"`
+- `"design engineer"`, `"ui engineer"`, `"creative developer"`, `"creative technologist"`
+- `"javascript engineer"`, `"typescript engineer"`
+- `"web developer"` + `f_E=3,4` to filter junior junk
+- Mobile: `"mobile engineer"`, `"ios engineer"`, `"android engineer"`, `flutter developer`
+
+Combining a keyword with `f_WT=2` (remote) + `f_TPR=r86400` (24h) typically yields 200–500 fresh hits per day across all keywords for EU+remote.
+
+### Anti-detection
+
+- Rotate `User-Agent` across recent desktop Chrome/Firefox strings. Known-good: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36`
+- Set `Accept-Language: en-US,en;q=0.9` and `Accept: text/html,application/xhtml+xml`
+- Throttle: **1 request every 2–4 seconds** is safe; 1/sec gets soft-blocked within an hour
+- Single IP soft cap is around 1k–2k requests/day before 429s
+- The `seeMoreJobPostings` endpoint is more lenient than the full search page — prefer it
+- Do **not** send LinkedIn cookies from a logged-in browser — that escalates to authenticated mode and triggers stricter detection on the guest endpoint
+- On 429: exponential backoff starting 60s, doubling
+
+### Example URLs (verified working)
+
+```
+# Lithuania, last 7 days, remote, react
+https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=react%20developer&location=Lithuania&f_TPR=r604800&f_WT=2&start=0
+
+# EU-wide, last 24h, remote, react native
+https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=%22react%20native%22&location=European%20Union&f_TPR=r86400&f_WT=2&start=0
+
+# Poland, last 7 days, mid-senior frontend
+https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=frontend%20engineer&location=Poland&f_TPR=r604800&f_E=3,4&start=0
+```
+
+### When to use which
+
+| Goal | Endpoint |
+|---|---|
+| Daily fresh sweep | `/jobs-guest/.../seeMoreJobPostings/search` with `f_TPR=r86400` and `sortBy=DD` |
+| Weekly fill-in | same endpoint with `f_TPR=r604800` |
+| Specific job apply URL | `/jobs/view/{JOB_ID}`, parse JSON-LD |
+| Full HTML search page | `/jobs/search/?...` — only when the guest endpoint fails (rare) |
 
 ### Search state tracking
 

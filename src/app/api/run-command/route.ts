@@ -3,16 +3,24 @@ import fs from "fs/promises";
 import { readFileSync } from "fs";
 import path from "path";
 import {
-  TIER1_BOARDS, TIER2_BOARDS, TIER3_BOARDS,
-  ALL_BOARDS,
+  boardLabel,
+  getBoardsForScope,
+  sortBoardsByRegionPriority,
+  type JobBoard,
 } from "@shared/config/priority-boards";
 import { rateLimit } from "@lib/rate-limit";
+import { readBoardStatsSync, lowYieldBoards } from "@lib/board-stats";
+import { hashQuery, readSearchHistorySync, pruneRecentlySearched, recordSearches } from "@lib/search-history";
+import type { Job } from "@shared/types/job";
 
-export const maxDuration = 60;
+// Route only generates a prompt + writes a few small JSON files; should never
+// take more than a couple seconds.
+export const maxDuration = 10;
 
 const PROJECT_ROOT = process.cwd().replace(/\\/g, "/");
 const USER_DIR = path.join(process.cwd(), "data", "user");
 const JOBS_PATH = path.join(USER_DIR, "jobs.json");
+const PROFILE_PATH = path.join(USER_DIR, "profile.json");
 const PENDING_PATH = path.join(USER_DIR, "pending-search.json");
 const BATCH_PATH = path.join(USER_DIR, "search-batch-state.json");
 
@@ -51,9 +59,47 @@ function withBatchLock<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function getExistingIds(): string[] {
-  try { return JSON.parse(readFileSync(JOBS_PATH, "utf-8")).map((j: { id: string }) => j.id); }
+interface ExistingJob {
+  id: string;
+  company?: string;
+  title?: string;
+}
+
+function getExistingJobs(): ExistingJob[] {
+  try { return JSON.parse(readFileSync(JOBS_PATH, "utf-8")) as ExistingJob[]; }
   catch { return []; }
+}
+
+interface RejectedHint {
+  company?: string;
+  title?: string;
+  tags?: string[];
+}
+
+function getRejectedHints(limit = 12): RejectedHint[] {
+  try {
+    const all = JSON.parse(readFileSync(JOBS_PATH, "utf-8")) as Job[];
+    return all
+      .filter((j) => j.rejected)
+      .slice(-limit)
+      .map((j) => ({ company: j.company, title: j.title, tags: j.tags }));
+  } catch {
+    return [];
+  }
+}
+
+interface ProfileSnapshot {
+  skills?: string[];
+  preferredRoles?: string[];
+  preferredSeniority?: string[];
+  preferredRegions?: string[];
+  preferredCategories?: string[];
+  remotePreference?: string;
+}
+
+function getProfile(): ProfileSnapshot | null {
+  try { return JSON.parse(readFileSync(PROFILE_PATH, "utf-8")) as ProfileSnapshot; }
+  catch { return null; }
 }
 
 function getBatchState(): BatchState | null {
@@ -65,39 +111,91 @@ function abs(relPath: string): string {
   return `${PROJECT_ROOT}/${relPath}`;
 }
 
-function buildSearchPrompt(config?: SearchConfig): { prompt: string; batchState: BatchState } {
-  const existingIds = getExistingIds();
+interface BuiltSearch {
+  prompt: string;
+  batchState: BatchState;
+  queryHash: string;
+  boardsSearched: string[];
+}
 
-  // Filters for the pending-search.json
-  const filterParts: string[] = [];
-  if (config?.regions?.length) filterParts.push(`Regions: ${config.regions.join(", ")}`);
-  if (config?.remoteOnly) filterParts.push("Remote positions ONLY");
-  if (config?.roleTypes?.length) filterParts.push(`Role types: ${config.roleTypes.join(", ")}`);
-  if (config?.seniority?.length) filterParts.push(`Seniority: ${config.seniority.join(", ")}`);
-  if (config?.categories?.length) filterParts.push(`Industries: ${config.categories.join(", ")}`);
-  if (config?.salaryMin) filterParts.push(`Min salary: $${config.salaryMin}/yr`);
-  if (config?.customQuery) filterParts.push(`Focus: ${config.customQuery}`);
+function buildSearchPrompt(config?: SearchConfig): BuiltSearch {
+  const existingJobs = getExistingJobs();
+  const profile = getProfile();
+  const rejectedHints = getRejectedHints();
+
+  // HARD constraints — every kept job must satisfy these (filter rejects, not preferences).
+  const hardConstraints: string[] = [];
+  // SOFT preferences — bias toward but don't reject for missing them.
+  const softConstraints: string[] = [];
+
+  if (config?.regions?.length) hardConstraints.push(`Region in: ${config.regions.join(", ")}`);
+  if (config?.remoteOnly) hardConstraints.push("Remote work allowed (remote: true)");
+  if (config?.roleTypes?.length) hardConstraints.push(`Role type in: ${config.roleTypes.join(", ")}`);
+  if (config?.seniority?.length) hardConstraints.push(`Seniority in: ${config.seniority.join(", ")}`);
+  if (config?.salaryMin) hardConstraints.push(`Salary >= $${config.salaryMin}/yr when listed (allow if unlisted)`);
+  if (config?.categories?.length) softConstraints.push(`Prefer industries: ${config.categories.join(", ")}`);
+  if (config?.customQuery) softConstraints.push(`Focus area: ${config.customQuery}`);
   if (config?.countries?.length) {
-    filterParts.push(`${config.localOnly ? "LOCAL ONLY" : "Also local"}: ${config.countries.join(", ")}`);
+    if (config.localOnly) hardConstraints.push(`Country in: ${config.countries.join(", ")}`);
+    else softConstraints.push(`Also include local roles in: ${config.countries.join(", ")}`);
   }
 
-  // Determine boards for batch tracking
+  // Stable hash of the search semantics — used to skip boards we already
+  // queried with this exact filter set in the last 24h.
+  const queryHash = hashQuery({
+    regions: config?.regions,
+    roleTypes: config?.roleTypes,
+    seniority: config?.seniority,
+    categories: config?.categories,
+    remoteOnly: config?.remoteOnly,
+    localOnly: config?.localOnly,
+    salaryMin: config?.salaryMin,
+    customQuery: config?.customQuery,
+    countries: config?.countries,
+    searchScope: config?.searchScope,
+  });
+
+  // Determine board pool: drop low-yield boards and any searched recently
+  // with this query. Auto-deprioritized boards still appear in the rotation
+  // eventually (after the recent ones are exhausted).
+  const stats = readBoardStatsSync();
+  const lowYield = new Set(lowYieldBoards(stats, { threshold: 0.1, minSubmissions: 20 }));
+  const history = readSearchHistorySync();
+
   const maxBoards = config?.maxBoards || 4;
   const existingBatch = getBatchState();
-  const allBoardsOrdered = config?.searchScope === "focused"
-    ? [...TIER1_BOARDS, ...TIER2_BOARDS, ...TIER3_BOARDS]
-    : ALL_BOARDS;
 
-  let boardsForThisBatch: string[];
+  // Region priority drives the rotation order: top entry in profile.preferredRegions
+  // (or the explicit config.regions filter) is hit first, then later entries, then
+  // global aggregators, then off-region boards. Within each priority bucket we sort
+  // by tier ascending so high-volume boards (LinkedIn) come before niche ones.
+  const regionPriority =
+    config?.regions?.length ? config.regions :
+    profile?.preferredRegions?.length ? profile.preferredRegions :
+    [];
+
+  const scopedBoards: JobBoard[] = getBoardsForScope(config?.searchScope);
+  const sortedBoards = sortBoardsByRegionPriority(scopedBoards, regionPriority);
+  const allBoardsOrdered = sortedBoards
+    .map(boardLabel)
+    .filter((label) => !lowYield.has(label));
+
+  let candidateBoards: string[];
   if (existingBatch && existingBatch.remainingBoards.length > 0) {
-    boardsForThisBatch = existingBatch.remainingBoards.slice(0, maxBoards);
+    candidateBoards = existingBatch.remainingBoards.slice(0, maxBoards * 2);
   } else {
-    boardsForThisBatch = allBoardsOrdered.slice(0, maxBoards);
+    candidateBoards = allBoardsOrdered.slice(0, maxBoards * 2);
   }
+
+  // Skip any of those boards we just searched with the same query.
+  const { fresh, skipped } = pruneRecentlySearched(candidateBoards, queryHash, history);
+  const boardsForThisBatch = (fresh.length > 0 ? fresh : candidateBoards).slice(0, maxBoards);
 
   const searchedSoFar = existingBatch?.searchedBoards || [];
   const afterThisBatch = [...searchedSoFar, ...boardsForThisBatch];
-  const remaining = allBoardsOrdered.filter(b => !afterThisBatch.includes(b));
+  const remaining = allBoardsOrdered.filter((b) => !afterThisBatch.includes(b));
+
+  const filtersSummary = [...hardConstraints, ...softConstraints].join("; ") || "broad";
 
   const batchState: BatchState = {
     searchedBoards: afterThisBatch,
@@ -106,59 +204,140 @@ function buildSearchPrompt(config?: SearchConfig): { prompt: string; batchState:
     startedAt: existingBatch?.startedAt || new Date().toISOString(),
     lastBatchAt: new Date().toISOString(),
     jobsFoundTotal: existingBatch?.jobsFoundTotal || 0,
-    filters: filterParts.join("; ") || "broad",
+    filters: filtersSummary,
   };
 
-  // Minimal prompt — Claude reads the files itself
   const parallelEnabled = config?.parallelMode && boardsForThisBatch.length > 1;
-
   const parallelInstructions = parallelEnabled ? `
 
-PARALLEL MODE ENABLED — search all ${boardsForThisBatch.length} boards simultaneously:
-- Launch one Agent per board using the Agent tool (all in a single message for true parallelism)
-- Each agent searches ONE board and returns found jobs as JSON
-- After ALL agents complete, merge results, deduplicate against existing ${existingIds.length} jobs, and append to jobs.json
-- If an agent fails, log the error and continue with results from the others` : "";
+PARALLEL MODE — delegate each board to a cheap Haiku subagent:
+- Launch ONE \`job-board-scraper\` subagent per board, all in a single message for real parallelism.
+  (See \`.claude/agents/job-board-scraper.md\` — it runs on Haiku 4.5 for cost efficiency.)
+- Pass each subagent: the board name/URL, the hard filters above, and the candidate's top skills.
+- Each subagent returns a JSON array; you (the parent) merge them and POST to \`/api/storage/jobs\`.
+- The storage route applies the hard-reject rubric server-side and dedupes — you don't need to
+  refilter perfectly, just hand off broad-but-relevant results.
+- If a subagent fails, log it and continue with the others.` : `
+
+DELEGATE EACH BOARD TO HAIKU:
+- For each board, launch the \`job-board-scraper\` subagent (defined in \`.claude/agents/job-board-scraper.md\`,
+  runs on Haiku 4.5 — much cheaper than doing the scrape yourself).
+- Pass it the board, the hard filters, and the candidate's top skills.
+- Merge returned arrays and POST to \`/api/storage/jobs\` once. The route applies the rubric and dedupes.`;
 
   const sequentialNote = !parallelEnabled && boardsForThisBatch.length > 1
-    ? "\nSearch boards one by one, sequentially." : "";
+    ? "\nLaunch the subagents one-by-one (sequentially) if you want to stay under the rate limit." : "";
 
-  const prompt = `Run the CHECK_NEW_JOBS command for the JobHunt app.
+  // Inline profile so the agent doesn't have to fetch it just to apply the rubric.
+  const profileSummary = profile
+    ? [
+        `Skills: ${(profile.skills ?? []).slice(0, 12).join(", ") || "(none recorded)"}`,
+        `Preferred roles: ${(profile.preferredRoles ?? []).join(", ") || "Frontend, Mobile"}`,
+        `Preferred seniority: ${(profile.preferredSeniority ?? []).join(", ") || "Mid, Senior"}`,
+        `Preferred regions: ${(profile.preferredRegions ?? []).join(", ") || "Remote, Europe"}`,
+        `Remote preference: ${profile.remotePreference ?? "remote"}`,
+      ].join("\n")
+    : "(no profile saved — search broadly for Frontend / Mobile / React / React Native roles)";
+
+  // Top recent jobs as inline dedupe hints. Storage still dedupes after, but
+  // pre-filtering avoids wasted searches and re-emitting the same listings.
+  const recentDedupe = existingJobs
+    .slice(-40)
+    .filter((j) => j.company && j.title)
+    .map((j) => `- ${j.company} — ${j.title}`)
+    .join("\n");
+
+  const negativeExamples = rejectedHints.length
+    ? rejectedHints
+        .map((r) => `- ${r.company ?? "?"} — ${r.title ?? "?"}${r.tags?.length ? ` [${r.tags.join(", ")}]` : ""}`)
+        .join("\n")
+    : "(none yet)";
+
+  const skippedNote = skipped.length
+    ? `\n(Skipped ${skipped.length} board(s) already searched with this exact filter in the last 24h: ${skipped.join(", ")})`
+    : "";
+
+  const prompt = `Run CHECK_NEW_JOBS for the JobHunt app.
 
 Project: ${PROJECT_ROOT}
-Read these files for context:
-- ${abs("docs/COMMANDS.md")} — full instructions and JSON format
-- ${abs("data/user/profile.json")} — candidate skills and preferences
-- ${abs("data/user/jobs.json")} — existing ${existingIds.length} jobs (skip duplicates)
-- ${abs("data/user/search-batch-state.json")} — batch progress
-- ${abs("src/shared/config/priority-boards.ts")} — all board URLs
+Reference files (read for full context):
+- ${abs("docs/COMMANDS.md")} — JSON schema and search method (WebFetch first, /api/scrape fallback)
+- ${abs("data/user/profile.json")} — full candidate profile
+- ${abs("data/user/jobs.json")} — existing ${existingJobs.length} jobs (full dedup list)
+- ${abs("src/shared/config/priority-boards.ts")} — board URLs
 
-This batch: search these ${boardsForThisBatch.length} boards:
-${boardsForThisBatch.map((b, i) => `${i + 1}. ${b}`).join("\n")}
-${filterParts.length > 0 ? `\nFilters: ${filterParts.join(", ")}` : ""}
-${searchedSoFar.length > 0 ? `\nBatch progress: ${searchedSoFar.length}/${allBoardsOrdered.length} done, ${remaining.length} remaining after this.` : ""}${parallelInstructions}${sequentialNote}
+CANDIDATE PROFILE (already extracted — apply during filtering):
+${profileSummary}
 
-After searching: append jobs to ${abs("data/user/jobs.json")}, update ${abs("data/user/search-batch-state.json")}, and log in ${abs("docs/SEARCH_LOG.md")}.`;
+REGION PRIORITY (the rotation already sorted by this — top entry first):
+${regionPriority.length ? regionPriority.map((r, i) => `${i + 1}. ${r}`).join("\n") : "(none — search broadly)"}
 
-  return { prompt, batchState };
+THIS BATCH — search these ${boardsForThisBatch.length} board(s):
+${boardsForThisBatch.map((b, i) => `${i + 1}. ${b}`).join("\n")}${searchedSoFar.length > 0 ? `\n\nBatch progress: ${searchedSoFar.length}/${allBoardsOrdered.length} done, ${remaining.length} remaining after this.` : ""}${skippedNote}
+
+FREE ATS FETCH (do this FIRST, before any agent search):
+- POST \`http://localhost:3000/api/board-fetch\` with no body to pull jobs from all known
+  Greenhouse / Lever / Ashby companies (defined in \`src/shared/config/ats-companies.ts\`).
+- These come back as ready-to-store JSON — no agent tokens spent. Submit to \`/api/storage/jobs\`.
+- Then proceed to the agent-driven board scrape below for boards that don't have public APIs.
+
+LINKEDIN REGION FILTER:
+- When a global aggregator (LinkedIn, Indeed, Wellfound, Greenhouse) is in the batch,
+  pass the candidate's top-priority region as a location filter so the results match.
+- For LinkedIn specifically: ${regionPriority[0] === "Europe" ? "use `&location=European%20Union` (or per-country `&location=Lithuania` etc.) plus `&f_WT=2` for remote-allowed roles" : regionPriority[0] === "Remote" ? "use `&f_WT=2` (remote) without a specific location" : regionPriority[0] ? `use \`&location=${encodeURIComponent(regionPriority[0])}\`` : "search broadly without a location filter"}.
+
+HARD FILTERS — every kept job MUST satisfy ALL of these:
+${hardConstraints.length ? hardConstraints.map((c) => `- ${c}`).join("\n") : "- (no hard filters set — apply profile defaults)"}
+
+SOFT PREFERENCES — bias toward but don't reject for missing:
+${softConstraints.length ? softConstraints.map((c) => `- ${c}`).join("\n") : "- (none)"}
+
+PRECISION RUBRIC (the storage layer enforces this server-side — your job is to
+extract broadly and let it filter):
+1. URL is a direct apply page (not a search/listing index).
+2. postedDate within last 30 days.
+3. roleType in: Frontend, Mobile, Full-Stack (Frontend-leaning), Design Engineer, Creative Developer.
+4. Skill overlap > 0 with the candidate's skills above.
+5. Not a duplicate of existing jobs (storage dedupes by id + normalized URL + company+title).
+
+NEGATIVE EXAMPLES (the candidate has rejected these — avoid similar):
+${negativeExamples}
+
+RECENT EXISTING JOBS (skip duplicates against these):
+${recentDedupe || "(none — first search)"}${parallelInstructions}${sequentialNote}
+
+After searching: POST aggregated results to \`http://localhost:3000/api/storage/jobs\` (storage
+applies the hard rubric and dedupes; the response tells you how many were rejected vs kept).
+Update \`docs/SEARCH_LOG.md\` with one line summarizing this run.`;
+
+  return { prompt, batchState, queryHash, boardsSearched: boardsForThisBatch };
 }
 
 function buildLocalSearchPrompt(countries: string[]): string {
-  const existingIds = getExistingIds();
+  const existing = getExistingJobs();
+  const profile = getProfile();
+  const skills = (profile?.skills ?? []).slice(0, 12).join(", ") || "React, TypeScript, Next.js";
 
   return `Run LOCAL_SEARCH for the JobHunt app.
 
 Project: ${PROJECT_ROOT}
-Read: ${abs("docs/COMMANDS.md")} for instructions, ${abs("data/user/profile.json")} for candidate info.
+Reference: ${abs("docs/COMMANDS.md")} (search method), ${abs("data/user/profile.json")} (full profile).
 
-Countries to search: ${countries.join(", ")}
-Discover local job boards for each country, search for frontend/React/mobile jobs.
-Append to ${abs("data/user/jobs.json")} (${existingIds.length} existing, skip duplicates).
-Update ${abs("docs/SEARCH_LOG.md")}.`;
+Countries: ${countries.join(", ")}
+Candidate skills: ${skills}
+
+Discover local job boards for each country (e.g. Lithuania → cvbankas.lt; Poland → nofluffjobs.com),
+search for Frontend / React / Mobile / React Native roles. Include local-language listings.
+
+PRECISION RUBRIC — reject if URL is a search-results page, postedDate > 30 days, role is unrelated
+discipline, or zero skill overlap. Append to ${abs("data/user/jobs.json")} (${existing.length} existing,
+skip duplicates by company+title or normalized URL). Append a line to ${abs("docs/SEARCH_LOG.md")}.`;
 }
 
 function buildCompanySearchPrompt(companies: { name: string; careersUrl: string }[]): string {
-  const existingIds = getExistingIds();
+  const existing = getExistingJobs();
+  const profile = getProfile();
+  const skills = (profile?.skills ?? []).slice(0, 12).join(", ") || "React, TypeScript, Next.js";
   const companyList = companies.map(c =>
     c.careersUrl ? `${c.name} (${c.careersUrl})` : c.name
   ).join(", ");
@@ -166,12 +345,17 @@ function buildCompanySearchPrompt(companies: { name: string; careersUrl: string 
   return `Run COMPANY_SEARCH for the JobHunt app.
 
 Project: ${PROJECT_ROOT}
-Read: ${abs("docs/COMMANDS.md")} for instructions, ${abs("data/user/profile.json")} for candidate info.
+Reference: ${abs("docs/COMMANDS.md")} (search method), ${abs("data/user/profile.json")} (full profile).
 
 Companies: ${companyList}
-Check their career pages + LinkedIn for frontend/React/mobile positions.
-Append to ${abs("data/user/jobs.json")} (${existingIds.length} existing, skip duplicates).
-Update ${abs("docs/SEARCH_LOG.md")}.`;
+Candidate skills: ${skills}
+
+Check each company's careers page + LinkedIn / Greenhouse / Lever / Ashby boards for Frontend /
+Mobile / React / React Native positions.
+
+PRECISION RUBRIC — reject if URL is a search-results page, postedDate > 30 days, role is unrelated
+discipline, or zero skill overlap. Append to ${abs("data/user/jobs.json")} (${existing.length} existing,
+skip duplicates). Append a line to ${abs("docs/SEARCH_LOG.md")}.`;
 }
 
 export async function POST(req: Request) {
@@ -208,6 +392,9 @@ export async function POST(req: Request) {
         if (built.batchState.remainingBoards.length === 0) {
           await fs.writeFile(BATCH_PATH, "{}");
         }
+        // Record the fingerprint so re-running the same search with the same
+        // filters skips boards we already hit in the last 24h.
+        await recordSearches(built.boardsSearched, built.queryHash);
         return built;
       });
       prompt = result.prompt;

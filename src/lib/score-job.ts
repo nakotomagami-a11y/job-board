@@ -4,6 +4,58 @@ import { SCORING_WEIGHTS, SENIORITY_ORDER } from "@shared/config/scoring";
 import { parseSalary } from "./salary";
 
 /**
+ * Hard-reject rubric — applied before scoring. A job that hits any of these
+ * is invalid by definition and should not be persisted, regardless of score.
+ *
+ * Returns null if the job passes all gates; otherwise the reason string for
+ * logging / display.
+ *
+ * Hard rules:
+ *  - URL is missing, malformed, or a search-results / index page
+ *  - postedDate is older than `maxAgeDays` (default 30)
+ *  - Tech stack has zero overlap with the candidate's skills (only checked
+ *    when both sides have data — empty profile or empty tags = skip the gate)
+ */
+export function rubricReject(
+  job: Job,
+  profile: UserProfile,
+  now: number = Date.now(),
+  maxAgeDays = 30,
+): string | null {
+  // 1. URL sanity
+  if (!job.url) return "missing url";
+  try {
+    const u = new URL(job.url);
+    const path = u.pathname.toLowerCase();
+    // Common search-results / listing-index patterns. We want direct apply links.
+    if (/\/search\b|\/jobs\/?$|\/listings\/?$|\/results\b/.test(path) && !/\/jobs\/[^/]+/.test(path)) {
+      return "url is a search/index page, not a direct apply link";
+    }
+  } catch {
+    return "malformed url";
+  }
+
+  // 2. Recency
+  const posted = new Date(job.postedDate).getTime();
+  if (Number.isFinite(posted)) {
+    const ageDays = (now - posted) / (1000 * 60 * 60 * 24);
+    if (ageDays > maxAgeDays) return `posted ${Math.round(ageDays)} days ago (>${maxAgeDays})`;
+  }
+
+  // 3. Skill overlap — only enforced when both sides have data.
+  if (profile.skills.length > 0 && job.tags.length > 0) {
+    const profileSkills = profile.skills.map((s) => s.toLowerCase());
+    const jobTags = job.tags.map((t) => t.toLowerCase());
+    const anyOverlap = profileSkills.some((s) =>
+      jobTags.some((t) => t.includes(s) || s.includes(t)),
+    );
+    if (!anyOverlap) return "zero overlap with candidate skills";
+  }
+
+  return null;
+}
+
+/**
  * Score a job against a user profile out of 100. Pure function — extracted
  * from useJobScoring so it can be unit-tested without React.
  *
@@ -25,12 +77,19 @@ export function scoreJob(job: Job, profile: UserProfile, now: number = Date.now(
     total += SCORING_WEIGHTS.techStackOverlap * 0.5;
   }
 
-  // Region match (20 pts)
+  // Region match (20 pts) — graduated by priority order in preferredRegions.
+  // Index 0 (top priority) gets full credit; later entries get partial credit;
+  // off-region remote-allowed jobs get a smaller bonus when the candidate is
+  // remote-leaning. This is what makes "EU first, then remote anywhere" actually
+  // bias the ranking instead of treating both regions equally.
   if (profile.preferredRegions.length > 0) {
-    if (profile.preferredRegions.includes(job.region)) {
-      total += SCORING_WEIGHTS.regionMatch;
+    const idx = profile.preferredRegions.indexOf(job.region);
+    if (idx === 0) {
+      total += SCORING_WEIGHTS.regionMatch;          // 20 — top-priority region
+    } else if (idx > 0) {
+      total += SCORING_WEIGHTS.regionMatch * 0.7;    // 14 — listed but not top
     } else if (profile.remotePreference === "remote" && job.remote) {
-      total += SCORING_WEIGHTS.regionMatch * 0.8;
+      total += SCORING_WEIGHTS.regionMatch * 0.5;    // 10 — off-region remote
     }
   } else if (profile.remotePreference === "remote" && job.remote) {
     total += SCORING_WEIGHTS.regionMatch;
