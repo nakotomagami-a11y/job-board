@@ -338,7 +338,7 @@ skip duplicates by company+title or normalized URL). Append a line to ${abs("doc
 }
 
 function buildLinkedInFeedPrompt(): string {
-  const existingIds = getExistingIds();
+  const existingIds = getExistingJobs().map((j) => j.id);
   const today = new Date().toISOString().slice(0, 10);
 
   return `Run LINKEDIN_FEED_SCAN for the JobHunt app.

@@ -1,6 +1,14 @@
 # Browser-side scrape prompt
 
-Use this with the [Claude for Chrome](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn) extension when a board blocks our automated scrapers (Wellfound's DataDome, LinkedIn's login wall, HiringCafe's bot challenge, etc.) or when you want to harvest job posts from your authenticated feed.
+**Primary path for bot-blocked boards.** Use this with the [Claude for Chrome](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn) extension whenever a board blocks our automated scrapers (Wellfound's DataDome, Indeed's Cloudflare, Glassdoor's bot detection, HiringCafe, startup.jobs, Weekday's login wall, JustRemote's heavy-JS render) or when you want to harvest job posts from your authenticated LinkedIn feed.
+
+## Fallback hierarchy
+
+When automated subagents return `[]` because of anti-bot detection, the priority is:
+
+1. **Claude for Chrome (this prompt)** — primary, automated. The extension runs Claude inside your authenticated browser tab; with the desktop app paired, it does the scrape end-to-end and POSTs results straight to `http://localhost:3000/api/storage/jobs` (the storage route has CORS open for this). Not a copy-paste workflow.
+2. **BrowserMCP** (`.mcp.json` registers `@browsermcp/mcp`) — fallback. Claude Code drives your already-open tab via the [browsermcp.io](https://browsermcp.io) Chrome/Brave extension. Use this when Claude for Chrome isn't running, or when you want the parent agent to orchestrate a repeated sweep.
+3. **Manual paste** — last resort. You dump raw HTML or a list of job cards and ask Claude Code to parse them.
 
 ## How to use
 
@@ -48,28 +56,41 @@ OUTPUT SCHEMA — one entry per job. Match this exactly:
 
 PROCESS:
 1. Scroll the page so all visible listings are loaded (LinkedIn / Wellfound paginate via scroll).
-2. For each listing visible on the page, read title, company, location, posted-date label ("2 days ago", "1 week ago", an absolute date, etc.) and convert to YYYY-MM-DD relative to TODAY.
-3. If a listing's posted-date is older than 7 days, SKIP IT — do not include it in the output.
-4. If a listing has no visible posted-date label, SKIP IT.
+2. For each listing visible on the page, read title, company, location, and the posted-date label ("2 days ago", "1 week ago", an absolute date, etc.) and convert to YYYY-MM-DD relative to TODAY.
+3. HARD RULE on dates — if a listing has no visible posted-date label on the card, click into its detail page to find the exact "Posted N days ago" or absolute date. If even the detail page doesn't surface a date, SKIP THE LISTING. Never invent a date, never substitute today's date, never use the URL filter (`fromage=7`, `f_TPR=r604800`) as a stand-in for the actual postedDate. The storage layer rejects dateless entries server-side anyway.
+4. If a listing's posted-date is older than 7 days, SKIP IT.
 5. If clicking the listing opens a side panel or detail page, harvest the apply URL (the "Apply on company website" link or the canonical job URL — never the search-results URL).
 6. Skip Easy Apply roles unless no other URL is available — for those, use the LinkedIn `/jobs/view/{ID}` URL.
 7. Cap at 25 jobs per session. Quality over quantity.
-8. Output the result as a single JSON array in a fenced ```json code block. Nothing else — no prose summary, no explanations, just the array. The user will copy that block and hand it to the local pipeline.
+8. POST the result to the local pipeline (CORS is open on this endpoint):
+   ```js
+   fetch("http://localhost:3000/api/storage/jobs", {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify(jobs)  // the array you built
+   }).then(r => r.json()).then(console.log)
+   ```
+   The response will look like `{ added, total, rejectedByRubric, rejectedAsStale }`. Report it back to the user — done in one shot, no copy-paste.
 ```
 
 ## Starter URLs
 
 Paste the prompt above on any of these. Replace your candidate skills/keywords as needed.
 
-### LinkedIn — guest job search
-- React, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=react&f_TPR=r604800&f_WT=2&sortBy=DD>
-- React Native, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=react%20native&f_TPR=r604800&f_WT=2&sortBy=DD>
-- Frontend Engineer, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=frontend%20engineer&f_TPR=r604800&f_WT=2&sortBy=DD>
-- TypeScript Engineer, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=typescript%20engineer&f_TPR=r604800&f_WT=2&sortBy=DD>
-- Mobile Engineer, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=mobile%20engineer&f_TPR=r604800&f_WT=2&sortBy=DD>
-- Design Engineer, last 7d, remote: <https://www.linkedin.com/jobs/search/?keywords=design%20engineer&f_TPR=r604800&f_WT=2&sortBy=DD>
+### LinkedIn — job search (Worldwide scope)
 
-Add `&location=European%20Union` (or your country) at the end if you want region-scoped results.
+⚠️ Always include `&geoId=92000000` (Worldwide) — without it, LinkedIn auto-pins the search to your profile country (e.g. Lithuania) and the result count collapses from ~thousands to ~100. Worldwide remote is what we want.
+
+- React: <https://www.linkedin.com/jobs/search/?keywords=react&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- React Native: <https://www.linkedin.com/jobs/search/?keywords=react%20native&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- Frontend Engineer: <https://www.linkedin.com/jobs/search/?keywords=frontend%20engineer&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- TypeScript Engineer: <https://www.linkedin.com/jobs/search/?keywords=typescript%20engineer&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- Mobile Engineer: <https://www.linkedin.com/jobs/search/?keywords=mobile%20engineer&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- Design Engineer: <https://www.linkedin.com/jobs/search/?keywords=design%20engineer&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- Next.js: <https://www.linkedin.com/jobs/search/?keywords=next.js&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+- UI Engineer: <https://www.linkedin.com/jobs/search/?keywords=ui%20engineer&f_TPR=r604800&f_WT=2&geoId=92000000&sortBy=DD>
+
+Other useful `geoId` values (swap into URL if you want region-scoped fallback): `91000000` European Union · `103644278` United States · `101174742` Canada · `101165590` United Kingdom.
 
 ### LinkedIn — your feed
 - <https://www.linkedin.com/feed/>
@@ -94,11 +115,9 @@ For the feed, modify the prompt's PROCESS step 1: "Scroll until you see ~50 post
 
 ## Handoff to the local pipeline
 
-Once the extension has output the JSON array, copy it and either:
+The prompt above already includes the `fetch()` call back to `http://localhost:3000/api/storage/jobs` — when the extension is paired with the desktop app, this happens automatically and the loop closes itself. CORS is open on this endpoint specifically to allow the Chrome extension running on third-party origins (linkedin.com, wellfound.com, etc.) to POST directly.
 
-**Option A — paste back into Claude Code.** Say: *"Import these scraped jobs"* and paste the array. Claude Code will POST it to `http://localhost:3000/api/storage/jobs`. The freshness filter (7-day), rubric, and dedup all run server-side.
-
-**Option B — paste into a shell.** Save the array to a file and curl it:
+If for some reason `fetch()` is blocked (older extension build, off-network, etc.), fall back to copy-paste:
 
 ```bash
 # paste the JSON array into /tmp/jobs.json first
@@ -107,7 +126,7 @@ curl -sf -X POST http://localhost:3000/api/storage/jobs \
   --data-binary @/tmp/jobs.json | jq
 ```
 
-Either way the response will be `{ added, total, rejectedByRubric, rejectedAsStale }`. `rejectedAsStale > 0` means a few 7+ day listings slipped through and the server caught them — fine. `added < input length` means dedup or the rubric did its job.
+The response is always `{ added, total, rejectedByRubric, rejectedAsStale }`. `rejectedAsStale > 0` means a few 7+ day listings slipped through and the server caught them — expected, that's the safety net. `added < input length` means dedup or the rubric did its job.
 
 ## After a sweep
 
