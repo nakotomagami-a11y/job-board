@@ -48,13 +48,14 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
   const [expanded, setExpanded] = useState(false);
 
   // Status counts and dynamic option sets only need to recompute when jobs change.
-  const { statusCounts, categories, companyTypes, roleTypes } = useMemo(() => {
+  const { statusCounts, categories, companyTypes, roleTypes, sources } = useMemo(() => {
     let applied = 0;
     let rejected = 0;
     let active = 0;
     const categorySet = new Set<string>();
     const companyTypeSet = new Set<string>();
     const roleTypeSet = new Set<string>();
+    const sourceSet = new Set<string>();
 
     for (const j of jobs) {
       if (j.applied) applied++;
@@ -63,6 +64,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
       categorySet.add(j.category);
       companyTypeSet.add(j.companyType);
       roleTypeSet.add(j.roleType);
+      if (j.source) sourceSet.add(j.source);
     }
 
     return {
@@ -70,6 +72,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
       categories: ["All", ...Array.from(categorySet).sort()],
       companyTypes: ["All", ...Array.from(companyTypeSet).sort()],
       roleTypes: ["All", ...Array.from(roleTypeSet).sort()],
+      sources: ["All", ...Array.from(sourceSet).sort()],
     };
   }, [jobs]);
 
@@ -81,6 +84,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
       filters.seniority !== "All",
       filters.companyType !== "All",
       filters.category !== "All",
+      filters.source !== "All",
       filters.timeframeDays !== 999,
       filters.status !== "All",
     ];
@@ -117,6 +121,16 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
           </div>
         </div>
       </div>
+
+      {/* Platform filter */}
+      {sources.length > 2 && (
+        <FilterGroup
+          label="Platform"
+          options={sources}
+          value={filters.source}
+          onChange={(v) => setFilter("source", v)}
+        />
+      )}
 
       {/* Status filter */}
       <div>
