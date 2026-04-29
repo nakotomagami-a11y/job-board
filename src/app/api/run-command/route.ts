@@ -160,7 +160,6 @@ Update ${abs("docs/SEARCH_LOG.md")}.`;
 function buildLinkedInFeedPrompt(): string {
   const existingIds = getExistingIds();
   const today = new Date().toISOString().slice(0, 10);
-
   const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   return `Run LINKEDIN_FEED_SCAN for the JobHunt app.
@@ -170,51 +169,211 @@ Today: ${today}
 Deadline: ${deadline} — HARD STOP at this time regardless of progress. Save whatever you have and exit.
 Existing jobs: ${existingIds.length} (skip duplicates by URL or company+title combo)
 
-Use the Chrome MCP browser tools to doom-scroll the LinkedIn feed and extract job posts:
+Use the Chrome MCP browser tools to doom-scroll the LinkedIn feed and extract job posts.
 
-1. Navigate to: https://www.linkedin.com/feed/
+═══ STEP 1: Navigate & sort by Most Recent ═══
 
-2. Wait for the feed to load (~3s).
+1a. Navigate to: https://www.linkedin.com/feed/
 
-3. Scroll through the feed. For each post check if it is a job posting or hiring announcement:
-   - Company posts saying "We're hiring", "Join our team", "Open role", "We have an opening"
-   - LinkedIn native job ad cards embedded in the feed
-   - People sharing job openings at their company
-   - Ignore non-job posts (articles, personal updates, reposts with no job mention)
+1b. Wait 3s for feed to load.
 
-4. Scroll down 8–10 times, pausing 2s between scrolls.
-   Stop immediately if the current time exceeds the Deadline above.
-   Stop if you see 5+ consecutive posts older than 7 days.
+1c. Click "Most recent first" via javascript_tool:
+    (async () => {
+      const btn = Array.from(document.querySelectorAll('*')).find(
+        el => el.innerText?.trim() === 'Select feed view: Most recent first'
+      );
+      if (btn) btn.click();
+    })()
 
-5. Keep only roles that match: Frontend Engineer, Software Engineer, React Developer,
-   Frontend Developer, UI Engineer, Full-Stack (frontend-leaning). Discard unrelated roles.
+1d. Wait 2s for the feed to re-sort.
 
-5. For each kept job, construct a Job object:
-   {
-     id: "linkedin-feed-<slugified-company-title>",
-     title: "<job title>",
-     company: "<company>",
-     companyType: <infer: "Startup" | "Tech Giant" | "SaaS / Dev Tools" | etc.>,
-     location: "<location>",
-     region: <infer from location: "Remote" | "Europe" | "North America" | "UK" | "Asia" | "Hybrid">,
-     remote: <true if "remote" in title/location>,
-     roleType: <"Frontend" | "Full-Stack (Frontend-leaning)" | "Mobile" | "Design Engineer">,
-     seniority: <infer from title: "Junior" | "Mid" | "Senior" | "Staff" | "Lead" | "Manager">,
-     url: "<full linkedin job URL>",
-     tags: [<relevant tech tags from title/description>],
-     postedDate: "<YYYY-MM-DD derived from 'X days/hours ago' relative to ${today}>",
-     verifiedDate: "${today}",
-     source: "LinkedIn Feed",
-     sourceType: "claude-search",
-     category: <infer: "Gaming" | "Crypto / Web3" | "AI / ML" | "Fintech" | "SaaS / Dev Tools" | "E-Commerce" | "Social / Community" | "Other">
-   }
+═══ STEP 2: Scroll & collect raw post texts ═══
 
-6. Deduplicate against existing ${existingIds.length} jobs — skip any with the same URL or same company+title.
+Scroll the feed's main container (NOT window) in a loop. Use this scroll snippet:
+    document.querySelector('main').scrollTop += 1400
 
-7. Write the new jobs array into ${abs("data/user/jobs.json")} by merging with existing:
-   - Read the current file, append new jobs, write back.
+Do 8–10 scroll iterations, waiting 2s between each. After each scroll, extract visible post containers using this snippet:
+    (() => {
+      const socialBars = Array.from(document.querySelectorAll('*')).filter(
+        el => el.innerText?.trim() === 'Like\\nComment\\nRepost\\nSend'
+      );
+      return socialBars.map(bar => {
+        let el = bar;
+        for (let i = 0; i < 5; i++) el = el.parentElement || el;
+        const links = Array.from(el.querySelectorAll('a[href]'))
+          .map(a => a.href)
+          .filter(h => h.includes('linkedin.com'))
+          .slice(0, 3);
+        return { text: el.innerText.slice(0, 1200), links };
+      });
+    })()
 
-8. Report: "Added X new jobs from LinkedIn Feed. Source: LinkedIn Feed."`;
+Accumulate all unique posts (deduplicate by first 80 chars of text). Stop immediately if current time >= deadline.
+
+═══ STEP 3: Classify — THIS IS THE MOST IMPORTANT STEP ═══
+
+The LinkedIn feed is FULL of noise. For EVERY collected post, you must decide:
+IS THIS A GENUINE JOB OPPORTUNITY or NOT?
+
+A post IS a job opportunity if it:
+  ✓ Explicitly announces an open position (role title + company)
+  ✓ Is a LinkedIn native "Promoted" job ad card with a job title
+  ✓ A recruiter or hiring manager posting "We're hiring a [role]"
+  ✓ A company page post with "Apply here" / "Join our team" + specific role
+
+A post is NOT a job opportunity if it is:
+  ✗ Career advice, tips, motivational content
+  ✗ "Like if you agree" / engagement bait
+  ✗ News articles (Bloomberg, Reuters, Business Insider, etc.)
+  ✗ Coursera / LinkedIn Learning certificates
+  ✗ Programming memes or jokes
+  ✗ Reposts without a concrete role listed
+  ✗ Someone announcing they started a new job (vs. hiring)
+  ✗ Product launches, company milestones without job openings
+  ✗ Interview prep content, coding challenges
+
+For each post classified as a job opportunity, also check: is the role relevant?
+Keep ONLY: Frontend Engineer, Software Engineer, React Developer, Frontend Developer,
+UI Engineer, Full-Stack (frontend-leaning), TypeScript Developer, Next.js Developer.
+Discard: DevOps, Backend-only, Data Science, Sales, Marketing, Design-only, etc.
+
+═══ STEP 4: Build Job objects ═══
+
+For each post that passed classification, extract a Job object:
+{
+  id: "linkedin-feed-<slugified-company>-<slugified-title>",
+  title: "<exact job title>",
+  company: "<company name>",
+  companyType: <infer: "Startup" | "Tech Giant" | "Agency" | "SaaS / Dev Tools" | "Fintech" | "E-Commerce" | "Other">,
+  location: "<city, country or Remote>",
+  region: <infer: "Remote" | "Europe" | "North America" | "UK" | "Asia" | "Hybrid">,
+  remote: <true if "remote" appears in title or location>,
+  roleType: <"Frontend" | "Full-Stack (Frontend-leaning)" | "Mobile" | "Design Engineer">,
+  seniority: <infer from title: "Junior" | "Mid" | "Senior" | "Staff" | "Lead" | "Manager">,
+  url: "<best LinkedIn URL from post links, prefer /jobs/ link>",
+  tags: [<tech tags: "React", "TypeScript", "Next.js", etc.>],
+  postedDate: "<YYYY-MM-DD from 'X days/hours ago' relative to ${today}>",
+  verifiedDate: "${today}",
+  source: "LinkedIn Feed",
+  sourceType: "claude-search",
+  category: <infer: "Gaming" | "Crypto / Web3" | "AI / ML" | "Fintech" | "SaaS / Dev Tools" | "E-Commerce" | "Social / Community" | "Other">
+}
+
+═══ STEP 5: Save ═══
+
+5a. Deduplicate against existing ${existingIds.length} jobs — skip same URL or same company+title.
+5b. Read ${abs("data/user/jobs.json")}, append new jobs, write back.
+5c. Report: "Added X new jobs from LinkedIn Feed. Scanned Y posts, Y were job opportunities, Y matched role filter."`;
+}
+
+function buildLinkedInApplyPrompt(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const jobsPath = abs("data/user/jobs.json");
+  const profilePath = abs("data/user/profile.json");
+  const auditPath = abs("data/user/apply-audit.json");
+
+  let linkedInJobs: { id: string; title: string; company: string; url: string; source: string }[] = [];
+  try {
+    const all = JSON.parse(readFileSync(JOBS_PATH, "utf-8"));
+    linkedInJobs = all.filter((j: { source?: string; applied?: boolean; rejected?: boolean }) =>
+      j.source?.toLowerCase().includes("linkedin") && !j.applied && !j.rejected
+    ).map((j: { id: string; title: string; company: string; url: string; source: string }) => ({
+      id: j.id, title: j.title, company: j.company, url: j.url, source: j.source,
+    }));
+  } catch { /* no jobs yet */ }
+
+  return `Run LINKEDIN_AUTO_APPLY for the JobHunt app.
+
+Project: ${PROJECT_ROOT}
+Today: ${today}
+Jobs to process: ${linkedInJobs.length} unapplied LinkedIn jobs
+
+Read ${profilePath} for candidate profile data.
+
+════════════════════════════════════════
+PHASE 1 — AUDIT ONLY. DO NOT APPLY YET.
+════════════════════════════════════════
+
+Visit each job URL below using the Chrome MCP browser tools.
+For each job, determine:
+  a) Is the URL a direct job posting or a recruiter profile?
+  b) Does it have a LinkedIn "Easy Apply" button, an external apply link, or neither?
+  c) What form fields does the application require? Read the form carefully.
+  d) Which fields can be answered from profile.json (name, email, location, skills, CV)?
+  e) Which fields are MISSING from the profile:
+       - Phone number
+       - LinkedIn profile URL
+       - Portfolio / website URL
+       - Work authorisation / right to work in the job's country
+       - Expected salary
+       - Notice period / earliest start date
+       - Years of total experience (number)
+       - Cover letter (yes/no — does the form require one?)
+       - Any custom screening questions (list them verbatim)
+
+Jobs to audit:
+${linkedInJobs.map((j, i) => `${i + 1}. [${j.id}] ${j.title} @ ${j.company}\n   URL: ${j.url}\n   Source: ${j.source}`).join("\n\n")}
+
+════════════════════════════════════════
+PHASE 2 — REPORT. WAIT FOR CONFIRMATION.
+════════════════════════════════════════
+
+After visiting ALL jobs, write your findings to ${auditPath} as JSON:
+[
+  {
+    "id": "<job id>",
+    "title": "<title>",
+    "company": "<company>",
+    "url": "<url>",
+    "applyType": "easy-apply" | "external" | "recruiter-profile" | "dead-link",
+    "externalApplyUrl": "<url if different from job url>",
+    "readyToApply": true | false,
+    "missingData": ["phone", "portfolio", ...],
+    "customQuestions": ["Question text here?", ...],
+    "needsCoverLetter": true | false,
+    "notes": "<any other observations>"
+  }
+]
+
+Then output a HUMAN-READABLE SUMMARY to the user in this format:
+
+╔══ AUTO-APPLY AUDIT — ${today} ══╗
+
+For each job:
+  ✅ READY  — [title] @ [company] ([applyType])
+  ⚠️  NEEDS  — [title] @ [company]: missing [phone, portfolio, ...]
+  ❌ SKIP   — [title] @ [company]: [dead link / recruiter profile / no apply button]
+
+Then list ALL missing data fields across all jobs (deduplicated), e.g.:
+  Missing across jobs:
+  • Phone number (needed by 3 jobs)
+  • Portfolio URL (needed by 2 jobs)
+  • Expected salary (needed by 1 job)
+
+Then ask:
+"Please provide the missing data above, then tell me which jobs to apply to (e.g. 'apply to job 1 and 3').
+⚠️  I will NOT submit any application until you explicitly confirm each one."
+
+════════════════════════════════════════
+PHASE 3 — APPLY (only after user confirms)
+════════════════════════════════════════
+
+Only proceed to this phase when the user explicitly says which jobs to apply to.
+
+For each confirmed job:
+1. Navigate to the job URL (or externalApplyUrl if different).
+2. Click "Easy Apply" or the apply button.
+3. Fill in all form fields using profile data + any data the user provided.
+4. For cover letters: write a concise, tailored 3-paragraph cover letter using the candidate's CV and the job description. Show it to the user before submitting.
+5. For custom screening questions: answer using profile data, showing each answer to the user before proceeding.
+6. STOP before the final "Submit" button. Show the user:
+   "About to submit application for [title] @ [company]. All fields filled. Ready?"
+7. Only click Submit after the user says yes/confirmed.
+8. After successful submission:
+   - Update ${jobsPath}: set applied=true, appliedDate="${today}" for that job id.
+   - Tell the user: "Applied to [title] @ [company] ✅"
+
+If anything goes wrong (CAPTCHA, login wall, broken form), stop and report to the user.`;
 }
 
 function buildCompanySearchPrompt(companies: { name: string; careersUrl: string }[]): string {
@@ -259,6 +418,9 @@ export async function POST(req: Request) {
     if (command === "linkedin-feed") {
       prompt = buildLinkedInFeedPrompt();
       searchType = "linkedin-feed";
+    } else if (command === "linkedin-apply") {
+      prompt = buildLinkedInApplyPrompt();
+      searchType = "linkedin-apply";
     } else if (command === "search") {
       const result = await withBatchLock(async () => {
         const built = buildSearchPrompt(searchConfig);

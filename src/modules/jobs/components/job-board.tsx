@@ -96,6 +96,38 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
     scheduleStatusClear(30000);
   };
 
+  const linkedInJobCount = jobs.filter(
+    (j) => j.source?.toLowerCase().includes("linkedin") && !j.applied && !j.rejected
+  ).length;
+
+  const handleLinkedInApply = async () => {
+    setActiveAction("search");
+    setActionStatus("running");
+    setActionMsg("Generating auto-apply audit prompt...");
+    try {
+      const res = await fetch(API.runCommand, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: "linkedin-apply" }),
+        signal: newSignal(),
+      });
+      const data = await res.json();
+      if (res.ok && data.mode === "prompt") {
+        setActionStatus("done");
+        setActionMsg('✅ Auto-apply prompt ready — tell Claude Code: "Run the LinkedIn auto apply"');
+        setGeneratedPrompt(data.prompt);
+      } else {
+        setActionStatus("error");
+        setActionMsg(data.error || "Failed to generate prompt");
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setActionStatus("error");
+      setActionMsg(e instanceof Error ? e.message : "Failed");
+    }
+    scheduleStatusClear(30000);
+  };
+
   const runCommand = async (command: "audit" | "search" | "clear-all") => {
     setActiveAction(command === "clear-all" ? "audit" : command);
     setActionStatus("running");
@@ -288,6 +320,12 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1, borderColor: "rgba(10,102,194,0.4)", color: "#6ba3d6" }}>
           {activeAction === "search" && isRunning ? "⏳ Scanning..." : "🔗 LinkedIn Feed"}
         </button>
+        {linkedInJobCount > 0 && (
+          <button className="filter-btn" onClick={handleLinkedInApply} disabled={isRunning}
+            style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(52,211,153,0.4)", color: "#34d399" }}>
+            {activeAction === "search" && isRunning ? "⏳ Auditing..." : `⚡ Auto Apply (${linkedInJobCount})`}
+          </button>
+        )}
         <button className="filter-btn" onClick={() => runCommand("audit")} disabled={isRunning}
           style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "audit" ? 0.4 : 1 }}>
           {activeAction === "audit" && isRunning ? "⏳ Auditing..." : "🧹 Audit"}
@@ -366,7 +404,10 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
             </div>
           </div>
           <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginBottom: 8 }}>
-            Tell Claude Code: <strong style={{ color: "var(--c-secondary)" }}>&quot;Run the job search&quot;</strong> — or copy and paste this prompt.
+            {actionMsg.includes("auto-apply") || actionMsg.includes("Auto Apply") || actionMsg.includes("audit")
+              ? <>Tell Claude Code: <strong style={{ color: "var(--c-secondary)" }}>&quot;Run the LinkedIn auto apply&quot;</strong> — Claude will audit all jobs and ask before submitting anything.</>
+              : <>Tell Claude Code: <strong style={{ color: "var(--c-secondary)" }}>&quot;Run the job search&quot;</strong> — or copy and paste this prompt.</>
+            }
           </div>
           <pre style={{
             background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 12,
