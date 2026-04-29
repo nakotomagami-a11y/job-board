@@ -68,6 +68,34 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
     (j) => j.matchScore !== undefined && j.matchScore >= 70
   ).length;
 
+  const handleLinkedInFeed = async () => {
+    setActiveAction("search");
+    setActionStatus("running");
+    setActionMsg("Generating LinkedIn Feed scan prompt...");
+    try {
+      const res = await fetch(API.runCommand, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: "linkedin-feed" }),
+        signal: newSignal(),
+      });
+      const data = await res.json();
+      if (res.ok && data.mode === "prompt") {
+        setActionStatus("done");
+        setActionMsg('✅ LinkedIn Feed prompt ready — tell Claude Code: "Run the LinkedIn feed scan"');
+        setGeneratedPrompt(data.prompt);
+      } else {
+        setActionStatus("error");
+        setActionMsg(data.error || "Failed to generate prompt");
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setActionStatus("error");
+      setActionMsg(e instanceof Error ? e.message : "Failed");
+    }
+    scheduleStatusClear(30000);
+  };
+
   const runCommand = async (command: "audit" | "search" | "clear-all") => {
     setActiveAction(command === "clear-all" ? "audit" : command);
     setActionStatus("running");
@@ -266,6 +294,10 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         <button className="apply-btn" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
           style={{ padding: "8px 18px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
           {activeAction === "search" && isRunning ? "⏳ Searching..." : "🔍 Find New Jobs"}
+        </button>
+        <button className="filter-btn" onClick={handleLinkedInFeed} disabled={isRunning}
+          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1, borderColor: "rgba(10,102,194,0.4)", color: "#6ba3d6" }}>
+          {activeAction === "search" && isRunning ? "⏳ Scanning..." : "🔗 LinkedIn Feed"}
         </button>
         <button className="filter-btn" onClick={() => runCommand("audit")} disabled={isRunning}
           style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "audit" ? 0.4 : 1 }}>

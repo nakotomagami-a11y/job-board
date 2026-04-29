@@ -337,6 +337,58 @@ discipline, or zero skill overlap. Append to ${abs("data/user/jobs.json")} (${ex
 skip duplicates by company+title or normalized URL). Append a line to ${abs("docs/SEARCH_LOG.md")}.`;
 }
 
+function buildLinkedInFeedPrompt(): string {
+  const existingIds = getExistingIds();
+  const today = new Date().toISOString().slice(0, 10);
+
+  return `Run LINKEDIN_FEED_SCAN for the JobHunt app.
+
+Project: ${PROJECT_ROOT}
+Today: ${today}
+Existing jobs: ${existingIds.length} (skip duplicates by URL or company+title combo)
+
+Use the Chrome MCP browser tools to scan LinkedIn for fresh job posts:
+
+1. Navigate to: https://www.linkedin.com/jobs/search/?keywords=frontend+engineer+OR+software+engineer+OR+react+developer&f_TPR=r604800&sortBy=DD
+   (f_TPR=r604800 = last 7 days, sortBy=DD = newest first)
+
+2. Wait for the job list to load (~3s). Extract all visible job cards:
+   - Job title, company name, location, "X time ago" label, job URL
+
+3. Scroll down 3–4 times (use scroll or page-down), extracting new cards each time.
+   Stop if you see results older than 7 days.
+
+4. Keep only roles that match: Frontend Engineer, Software Engineer, React Developer,
+   Frontend Developer, UI Engineer, Full-Stack (frontend-leaning). Discard unrelated roles.
+
+5. For each kept job, construct a Job object:
+   {
+     id: "linkedin-feed-<slugified-company-title>",
+     title: "<job title>",
+     company: "<company>",
+     companyType: <infer: "Startup" | "Tech Giant" | "SaaS / Dev Tools" | etc.>,
+     location: "<location>",
+     region: <infer from location: "Remote" | "Europe" | "North America" | "UK" | "Asia" | "Hybrid">,
+     remote: <true if "remote" in title/location>,
+     roleType: <"Frontend" | "Full-Stack (Frontend-leaning)" | "Mobile" | "Design Engineer">,
+     seniority: <infer from title: "Junior" | "Mid" | "Senior" | "Staff" | "Lead" | "Manager">,
+     url: "<full linkedin job URL>",
+     tags: [<relevant tech tags from title/description>],
+     postedDate: "<YYYY-MM-DD derived from 'X days/hours ago' relative to ${today}>",
+     verifiedDate: "${today}",
+     source: "LinkedIn Feed",
+     sourceType: "claude-search",
+     category: <infer: "Gaming" | "Crypto / Web3" | "AI / ML" | "Fintech" | "SaaS / Dev Tools" | "E-Commerce" | "Social / Community" | "Other">
+   }
+
+6. Deduplicate against existing ${existingIds.length} jobs — skip any with the same URL or same company+title.
+
+7. Write the new jobs array into ${abs("data/user/jobs.json")} by merging with existing:
+   - Read the current file, append new jobs, write back.
+
+8. Report: "Added X new jobs from LinkedIn Feed. Source: LinkedIn Feed."`;
+}
+
 function buildCompanySearchPrompt(companies: { name: string; careersUrl: string }[]): string {
   const existing = getExistingJobs();
   const profile = getProfile();
@@ -383,7 +435,10 @@ export async function POST(req: Request) {
     let searchType = "";
     let batchInfo: BatchState | null = null;
 
-    if (command === "search") {
+    if (command === "linkedin-feed") {
+      prompt = buildLinkedInFeedPrompt();
+      searchType = "linkedin-feed";
+    } else if (command === "search") {
       const result = await withBatchLock(async () => {
         const built = buildSearchPrompt(searchConfig);
         // Persist the new batch state inside the lock so a concurrent caller

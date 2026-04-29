@@ -9,6 +9,7 @@ export interface Filters {
   seniority: string;
   companyType: string;
   category: string;
+  source: string;
   timeframeDays: number;
   status: StatusFilter;
 }
@@ -20,6 +21,7 @@ export const initialFilters: Filters = {
   seniority: "All",
   companyType: "All",
   category: "All",
+  source: "All",
   timeframeDays: 999,
   status: "All",
 };
@@ -53,6 +55,7 @@ export function applyFilters(jobs: Job[], filters: Filters, now: number = Date.n
     if (filters.seniority !== "All" && job.seniority !== filters.seniority) return false;
     if (filters.companyType !== "All" && job.companyType !== filters.companyType) return false;
     if (filters.category !== "All" && job.category !== filters.category) return false;
+    if (filters.source !== "All" && job.source !== filters.source) return false;
 
     if (filters.timeframeDays < 999) {
       const posted = new Date(job.postedDate).getTime();
