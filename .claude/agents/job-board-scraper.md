@@ -35,8 +35,8 @@ Each request returns ~10–25 `<li>` cards. Each card has `data-entity-urn="urn:
 
 For the apply URL: fetch `https://www.linkedin.com/jobs/view/{JOB_ID}` and extract from the JSON-LD block (`hiringOrganization.url`) or the "Apply on company website" button. If neither exists it's an Easy Apply — record it as `apply_via_linkedin` and use the `/jobs/view/{JOB_ID}` URL itself.
 
-Useful filters:
-- `f_TPR=r86400` (24h) / `r604800` (7d) / `r2592000` (30d)
+Useful filters (always pass `f_TPR=r604800` to limit to last 7 days — the storage route rejects anything older anyway):
+- `f_TPR=r86400` (24h) / `r604800` (7d, default) — DO NOT use `r2592000` (30d) since the storage layer drops anything >7d
 - `f_WT=2` (remote) / `1,3` (onsite + hybrid)
 - `f_E=3,4` (associate + mid-senior — filters out junior junk)
 - `sortBy=DD` (newest first)
@@ -76,7 +76,7 @@ Cap your output at 25 jobs per LinkedIn run — quality over quantity, the paren
 ## Rules — drop the listing if ANY are true
 
 - URL is a search-results page, listing index, or returns 404/410.
-- postedDate is older than 30 days.
+- postedDate is older than 7 days from today (HARD RULE — also drop listings with no visible posted date, since we cannot prove freshness).
 - Role is backend-only, devops, data, PM, marketing, recruiting, or design (not engineering).
 - Tech stack has zero overlap with `candidateSkills`.
 - Hard filter violation (wrong region, wrong country, not remote when remoteOnly is set).

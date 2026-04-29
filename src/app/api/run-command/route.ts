@@ -298,7 +298,7 @@ ${softConstraints.length ? softConstraints.map((c) => `- ${c}`).join("\n") : "- 
 PRECISION RUBRIC (the storage layer enforces this server-side — your job is to
 extract broadly and let it filter):
 1. URL is a direct apply page (not a search/listing index).
-2. postedDate within last 30 days.
+2. postedDate within last 7 days (HARD RULE — storage drops anything older AND anything missing a postedDate; do not waste tokens on listings without a visible posted date).
 3. roleType in: Frontend, Mobile, Full-Stack (Frontend-leaning), Design Engineer, Creative Developer.
 4. Skill overlap > 0 with the candidate's skills above.
 5. Not a duplicate of existing jobs (storage dedupes by id + normalized URL + company+title).

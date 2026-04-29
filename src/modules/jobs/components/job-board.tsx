@@ -181,9 +181,20 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
     setShowSearchConfig(false);
     setActiveAction("search");
     setActionStatus("running");
-    setActionMsg("Generating search prompt...");
+    setActionMsg("Resetting batch for a fresh sweep...");
 
     try {
+      // Wipe any leftover batch progress so the new search hits every board in
+      // the rotation, not just the ones that weren't searched last time.
+      // The "🔄 Reset Batch" button stays available for manual mid-sweep resets.
+      await fetch(API.runCommand, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: "reset-batch" }),
+        signal: newSignal(),
+      });
+
+      setActionMsg("Generating search prompt...");
       const res = await fetch(API.runCommand, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

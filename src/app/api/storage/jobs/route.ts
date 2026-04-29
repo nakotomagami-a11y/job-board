@@ -10,6 +10,14 @@ import { rubricReject } from "@lib/score-job";
 
 const USER_JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
 const PROFILE_PATH = path.join(process.cwd(), "data", "user", "profile.json");
+const FRESHNESS_DAYS = 7;
+
+// Returns the ISO date (YYYY-MM-DD) cutoff; anything strictly older is stale.
+function freshnessCutoff(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - FRESHNESS_DAYS);
+  return d.toISOString().slice(0, 10);
+}
 
 async function getProfile(): Promise<UserProfile | null> {
   try { return JSON.parse(await fs.readFile(PROFILE_PATH, "utf-8")) as UserProfile; }
@@ -32,9 +40,22 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const newJobs = sanitizeJobs((await req.json()) as Job[]);
+    const submitted = sanitizeJobs((await req.json()) as Job[]);
     const existing = await getJobs();
     const existingIds = new Set(existing.map((j) => j.id));
+
+    // Drop stale or undated listings before any other processing. Jobs older
+    // than FRESHNESS_DAYS or without a postedDate never reach the rubric or
+    // dedup paths.
+    const cutoff = freshnessCutoff();
+    const staleRejected: { id: string; postedDate: string | null }[] = [];
+    const newJobs: Job[] = submitted.filter((j) => {
+      if (!j.postedDate || j.postedDate < cutoff) {
+        staleRejected.push({ id: j.id, postedDate: j.postedDate ?? null });
+        return false;
+      }
+      return true;
+    });
 
     // Apply the hard-reject rubric BEFORE dedup. Anything failing it never
     // reaches storage — keeps the agent honest even if its filtering is loose.
@@ -78,6 +99,7 @@ export async function POST(req: Request) {
       added,
       total: merged.length,
       rejectedByRubric: rubricRejected.length,
+      rejectedAsStale: staleRejected.length,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -86,10 +108,12 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const jobs = sanitizeJobs((await req.json()) as Job[]);
+    const submitted = sanitizeJobs((await req.json()) as Job[]);
+    const cutoff = freshnessCutoff();
+    const jobs = submitted.filter((j) => j.postedDate && j.postedDate >= cutoff);
     await fs.mkdir(path.dirname(USER_JOBS_PATH), { recursive: true });
     await fs.writeFile(USER_JOBS_PATH, JSON.stringify(jobs, null, 2));
-    return NextResponse.json({ total: jobs.length });
+    return NextResponse.json({ total: jobs.length, droppedStale: submitted.length - jobs.length });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
