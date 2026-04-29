@@ -16,6 +16,12 @@ export interface UserProfile {
   };
   skills: string[];
   cvText?: string;
+  // Auto-apply assets
+  cvPath?: string; // absolute or repo-relative path to CV file (PDF/DOCX)
+  linkedinUrl?: string;
+  websiteUrl?: string;
+  githubUrl?: string;
+  phone?: string;
   onboardingComplete: boolean;
   createdAt: string;
   updatedAt: string;
