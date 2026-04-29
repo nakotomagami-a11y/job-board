@@ -170,19 +170,23 @@ Today: ${today}
 Deadline: ${deadline} — HARD STOP at this time regardless of progress. Save whatever you have and exit.
 Existing jobs: ${existingIds.length} (skip duplicates by URL or company+title combo)
 
-Use the Chrome MCP browser tools to scan LinkedIn for fresh job posts:
+Use the Chrome MCP browser tools to doom-scroll the LinkedIn feed and extract job posts:
 
-1. Navigate to: https://www.linkedin.com/jobs/search/?keywords=frontend+engineer+OR+software+engineer+OR+react+developer&f_TPR=r604800&sortBy=DD
-   (f_TPR=r604800 = last 7 days, sortBy=DD = newest first)
+1. Navigate to: https://www.linkedin.com/feed/
 
-2. Wait for the job list to load (~3s). Extract all visible job cards:
-   - Job title, company name, location, "X time ago" label, job URL
+2. Wait for the feed to load (~3s).
 
-3. Scroll down 3–4 times (use scroll or page-down), extracting new cards each time.
-   Stop if you see results older than 7 days.
+3. Scroll through the feed. For each post check if it is a job posting or hiring announcement:
+   - Company posts saying "We're hiring", "Join our team", "Open role", "We have an opening"
+   - LinkedIn native job ad cards embedded in the feed
+   - People sharing job openings at their company
+   - Ignore non-job posts (articles, personal updates, reposts with no job mention)
+
+4. Scroll down 8–10 times, pausing 2s between scrolls.
    Stop immediately if the current time exceeds the Deadline above.
+   Stop if you see 5+ consecutive posts older than 7 days.
 
-4. Keep only roles that match: Frontend Engineer, Software Engineer, React Developer,
+5. Keep only roles that match: Frontend Engineer, Software Engineer, React Developer,
    Frontend Developer, UI Engineer, Full-Stack (frontend-leaning). Discard unrelated roles.
 
 5. For each kept job, construct a Job object:
