@@ -1,6 +1,6 @@
 # JobHunt
 
-> An AI-powered remote job board that uses Claude Code to search 55+ job boards, score listings against your profile, and keep everything in one place.
+> An AI-powered remote job board that uses Claude Code to search 75+ job boards, score listings against your profile, and keep everything in one place.
 
 Instead of manually checking dozens of sites every day, you tell Claude to run a search — it crawls the boards, filters by your skills and preferences, and appends verified active listings directly to your local job list. No subscriptions, no scraper APIs, no extra cost beyond your existing Claude Code session.
 
@@ -9,9 +9,10 @@ Instead of manually checking dozens of sites every day, you tell Claude to run a
 ## How it works
 
 1. **Onboard** — paste your CV, set your preferred roles, regions, and seniority
-2. **Search** — tell Claude: *"Run the job search"* — it works through 55+ boards in batches, deduplicates, and appends only fresh listings
+2. **Search** — tell Claude: *"Run the job search"* — it works through 75+ boards in batches, deduplicates, and appends only fresh listings
 3. **Browse** — filter, score, and track jobs in the dashboard
-4. **Repeat** — Claude tracks which boards it already searched so it picks up where it left off
+4. **Apply** — click through to apply externally, or use the LinkedIn auto-apply command
+5. **Repeat** — Claude tracks which boards it already searched so it picks up where it left off
 
 All data lives in local JSON files. Nothing is sent anywhere except the job board requests Claude makes during search.
 
@@ -66,9 +67,17 @@ Open [http://localhost:3000](http://localhost:3000) — the onboarding wizard wi
 
 ---
 
-## Running a job search
+## Daily search workflow
 
-Once onboarded, open a Claude Code session in this project directory and say:
+The search is **manually triggered** — run it once a day when you're ready to review new listings.
+
+Open a Claude Code session in this project directory and run:
+
+```
+/search-latest
+```
+
+Or say:
 
 ```
 Run the job search
@@ -109,7 +118,6 @@ job-board/
 │   └── user.example/         # Template — copy to data/user/ to start
 ├── docs/
 │   ├── COMMANDS.md           # Full Claude command reference
-│   ├── SEARCH_LOG.md         # Log of every search run
 │   └── SEARCH_STRATEGY.md    # Board priority and search approach
 └── .env.example
 ```
@@ -118,19 +126,51 @@ job-board/
 
 ## Job boards covered
 
-**55+ boards across 7 tiers:**
+**75+ boards across 7 tiers — EU-first priority:**
 
 | Tier | Boards |
 |------|--------|
-| Mega aggregators | LinkedIn, Indeed, Glassdoor, Google Jobs, ZipRecruiter |
-| Remote-first | WeWorkRemotely, RemoteOK, arc.dev, FlexJobs, Himalayas, Remotive, Remote.co, Working Nomads, JustRemote |
-| Startup & tech | Wellfound, YC Work at a Startup, startup.jobs, Built In, Otta, Dice, Turing, Toptal |
+| Mega aggregators | LinkedIn, Indeed, Glassdoor, Google Jobs |
+| Remote-first | arc.dev, Himalayas, Remotive, Remote.co, Working Nomads, JustRemote, Jobicy |
+| Startup & tech | Wellfound, YC Work at a Startup, startup.jobs, Built In, Otta |
 | ATS platforms | Greenhouse, Lever, Ashby, Workable, SmartRecruiters, BambooHR |
 | Frontend-specific | reactjobs.io, HN Who is Hiring, JavaScript Job Board |
 | Niche / industry | web3.career, CryptoJobsList, Hitmarker (gaming), AI Jobs |
-| European-focused | EU Remote Jobs, The Hub, landing.jobs, No Fluff Jobs, Just Join IT, MeetFrank |
+| **European-focused** | **EU Remote Jobs, The Hub, landing.jobs, No Fluff Jobs, Just Join IT, MeetFrank, SwissDevJobs, Berlin Startup Jobs** |
 
 > **Note:** Some boards (Wellfound, startup.jobs, Himalayas, Remote.co) block automated fetching and require running the search via the Browser MCP tool in Claude Code.
+
+---
+
+## Blocked / paywalled sources
+
+These sources are confirmed paywalled or spam — skip them entirely:
+
+| Source | Reason |
+|--------|--------|
+| **DailyRemote** | Apply button redirects to premium paywall (`/get-started?utm_source=premium_redirect`) |
+| **RemoteOK** | Apply button redirects to account creation (`/sign-up`) |
+| **WeWorkRemotely** | Requires paid subscription ($2.95 first month, then $14.95/month) to apply |
+| **FlexJobs** | Subscription required to view listings |
+| **ZipRecruiter** | US-centric, poor signal for EU/remote roles |
+| **Dice** | US-centric, all listings require US location or timezone |
+| **Triplebyte** | Defunct — shut down March 2023, acquired by Karat |
+| **Hired** | Acquired by LHH in June 2024 — no longer a tech marketplace |
+
+**Spam companies to reject on sight:**
+
+| Company | Reason |
+|---------|--------|
+| **micro1** | Fake/spam job ads designed to drive traffic from competitors — not real opportunities |
+
+---
+
+## Search tips
+
+- **Prioritize EU** — set `preferredRegions: ["Europe", "Remote"]` in your profile for better signal
+- **Double-check prefilled data** — arc.dev and Greenhouse forms often pre-fill with stale profile data; always verify name, email, rate, and phone before submitting
+- **Reject fast** — use the Reject button on listings from blocked companies/sources before they clutter your pipeline
+- **Run daily** — `/search-latest` is designed for daily use (first-page only, last 7 days, parallel)
 
 ---
 

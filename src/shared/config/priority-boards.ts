@@ -22,7 +22,6 @@ export const TIER2_BOARDS = [
   "Remotive (remotive.com)",
   "JustRemote (justremote.co)",
   "Remote Rocketship (remoterocketship.com)",
-  "DailyRemote (dailyremote.com)",
   "Jobspresso (jobspresso.co)",
   "Remote100K (remote100k.com)",
   "NoDesk (nodesk.co)",

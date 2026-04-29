@@ -23,7 +23,7 @@ The app generates search prompts (saved to `data/user/command-prompt.txt` and `d
 
 **What it does:** Quick-scans the first page of all 13 high-yield boards for jobs posted in the last 7 days. Unlike CHECK_NEW_JOBS which processes boards in batches, this hits all reliable boards at once using parallel agents — designed for daily use.
 
-**Boards checked (13):** Remotive (API), RemoteOK (API), Himalayas, arc.dev, WeWorkRemotely, Working Nomads, Wellfound, LinkedIn, Indeed, Built In, web3.career, Jobicy (API), DailyRemote
+**Boards checked (12):** Remotive (API), RemoteOK (API), Himalayas, arc.dev, WeWorkRemotely, Working Nomads, Wellfound, LinkedIn, Indeed, Built In, web3.career, Jobicy (API)
 
 **Key differences from CHECK_NEW_JOBS:**
 - First page only — no pagination
@@ -203,9 +203,54 @@ If WebFetch returns no job data, an empty page, a 403/404/410, or bot-challenge 
 | Board | Status | Notes |
 |-------|--------|-------|
 | FlexJobs (flexjobs.com) | Paywall — subscription required | Not worth Browser MCP |
-| Triplebyte (triplebyte.com) | **Defunct** — shut down March 2023, acquired by Karat | Remove from board list |
+| Triplebyte (triplebyte.com) | **Defunct** — shut down March 2023, acquired by Karat | Skip entirely |
 | Hired (hired.com) | **Acquired** — redirects to LHH Recruitment Solutions (June 2024) | Changed from tech marketplace to broad HR |
-| Dice (dice.com) | US-centric — all listings require US location/timezone | Not useful for worldwide remote |
+| Dice (dice.com) | US-centric — all listings require US location/timezone | Not useful for EU/worldwide remote |
+
+---
+
+## 🚫 BLOCKED SOURCES & SPAM COMPANIES
+
+**Never search or apply to these — reject any jobs from them immediately:**
+
+| Source / Company | Type | Reason |
+|-----------------|------|--------|
+| **DailyRemote** | Paywall | Apply button redirects to `/get-started?utm_source=premium_redirect` |
+| **RemoteOK** | Paywall | Apply button redirects to `remoteok.com/sign-up` |
+| **WeWorkRemotely** | Paywall | Requires paid subscription ($2.95/first month, then $14.95/month) |
+| **FlexJobs** | Paywall | Requires subscription to view listings |
+| **ZipRecruiter** | Low signal | US-centric, poor match for EU/remote roles |
+| **Dice** | Low signal | All listings require US location or timezone |
+| **micro1** | Spam | Posts fake job ads to drive traffic from competitors — not real opportunities |
+
+When processing `data/user/jobs.json`, immediately reject (set `rejected: true`) any job where:
+- `source` matches any blocked source above
+- `company` is "micro1" (or any other confirmed spam company)
+
+---
+
+## 🌍 EU-FIRST SEARCH GUIDANCE
+
+**Always prioritize European job boards and EU-friendly remote roles.** Lithuania-based candidates get better response rates from EU companies.
+
+**Top EU-focused boards to always include:**
+- `landing.jobs` — Portugal + EU remote focus
+- `nofluffjobs.com` — Poland, strong React ecosystem
+- `justjoin.it` — Poland, large frontend market
+- `meetfrank.com` — Baltic + Nordic startups
+- `euremotejobs.com` — EU-only remote roles
+- `berlinstartupjobs.com` — German-speaking market
+- `swissdevjobs.ch` — Swiss market (high rates)
+- `thehub.io` — Nordic/Scandinavian startups
+
+**In the profile**, set:
+```json
+"preferredRegions": ["Europe", "Remote"]
+```
+
+**When forming search queries**, always include:
+- `"Europe" OR "EU" OR "EMEA" OR "Worldwide"` in location filters
+- Exclude `"US only"`, `"US citizens only"`, `"must be US-based"` patterns
 
 ### Search state tracking
 

@@ -46,8 +46,14 @@ yarn-error.log*
 Thumbs.db
 desktop.ini
 
+# ───── Temporary agent/script output ─────
+scripts/round2-*.json
+scripts/round*.json
+
 # ───── Claude Code workspace settings ─────
-.claude/
+# Track .claude/commands/ (project slash commands) but ignore local settings
+.claude/settings.local.json
+.claude/worktrees/
 
 # ───── TypeScript ─────
 tsconfig.tsbuildinfo
