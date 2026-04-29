@@ -161,10 +161,13 @@ function buildLinkedInFeedPrompt(): string {
   const existingIds = getExistingIds();
   const today = new Date().toISOString().slice(0, 10);
 
+  const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
   return `Run LINKEDIN_FEED_SCAN for the JobHunt app.
 
 Project: ${PROJECT_ROOT}
 Today: ${today}
+Deadline: ${deadline} — HARD STOP at this time regardless of progress. Save whatever you have and exit.
 Existing jobs: ${existingIds.length} (skip duplicates by URL or company+title combo)
 
 Use the Chrome MCP browser tools to scan LinkedIn for fresh job posts:
@@ -177,6 +180,7 @@ Use the Chrome MCP browser tools to scan LinkedIn for fresh job posts:
 
 3. Scroll down 3–4 times (use scroll or page-down), extracting new cards each time.
    Stop if you see results older than 7 days.
+   Stop immediately if the current time exceeds the Deadline above.
 
 4. Keep only roles that match: Frontend Engineer, Software Engineer, React Developer,
    Frontend Developer, UI Engineer, Full-Stack (frontend-leaning). Discard unrelated roles.
