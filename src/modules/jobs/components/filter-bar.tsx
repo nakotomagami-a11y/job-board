@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { REGIONS, SENIORITIES, TIMEFRAMES } from "@shared/config/filters";
+import { sourceLabel } from "@lib/filter-jobs";
 import type { Filters, StatusFilter } from "../hooks/use-filters";
 import type { Job } from "@shared/types/job";
 
@@ -64,7 +65,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
       categorySet.add(j.category);
       companyTypeSet.add(j.companyType);
       roleTypeSet.add(j.roleType);
-      if (j.source) sourceSet.add(j.source);
+      if (j.source) sourceSet.add(sourceLabel(j.source));
     }
 
     return {

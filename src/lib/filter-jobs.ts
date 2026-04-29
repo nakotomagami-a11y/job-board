@@ -26,6 +26,49 @@ export const initialFilters: Filters = {
   status: "All",
 };
 
+// Subagents and the browser flow have written `source` inconsistently over
+// time ("LinkedIn Jobs" / "linkedin", "RemoteOK" / "remoteok", etc.). Collapse
+// the variants to one canonical board label so the Platform filter shows one
+// button per board, not three. NOTE: "LinkedIn Feed" stays a separate bucket
+// from "LinkedIn" because the feed scanner pulls a different signal (network-
+// shared posts) and we want it filterable as its own category.
+export function sourceLabel(source: string | null | undefined): string {
+  if (!source) return "Unknown";
+  if (source === "LinkedIn Feed") return "LinkedIn Feed";
+  const key = source.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (key === "linkedinfeed") return "LinkedIn Feed";
+  const map: Record<string, string> = {
+    linkedin: "LinkedIn",
+    linkedinjobs: "LinkedIn",
+    remoteok: "RemoteOK",
+    weworkremotely: "WeWorkRemotely",
+    workingnomads: "Working Nomads",
+    remoterocketship: "Remote Rocketship",
+    dailyremote: "DailyRemote",
+    dynamitejobs: "Dynamite Jobs",
+    nodesk: "NoDesk",
+    arcdev: "arc.dev",
+    dicecom: "Dice",
+    dice: "Dice",
+    greenhouse: "Greenhouse",
+    ashby: "Ashby",
+    lever: "Lever",
+    hiringcafe: "HiringCafe",
+    wellfound: "Wellfound",
+    indeed: "Indeed",
+    glassdoor: "Glassdoor",
+    himalayas: "Himalayas",
+    remotive: "Remotive",
+    jobicy: "Jobicy",
+    arbeitnow: "Arbeitnow",
+    jobspresso: "Jobspresso",
+    justremote: "JustRemote",
+    weekday: "Weekday",
+    startupjobs: "startup.jobs",
+  };
+  return map[key] ?? source;
+}
+
 /**
  * Pure filter predicate — extracted from useFilters so it can be unit-tested
  * without React. `now` is injected for deterministic timeframe tests.
@@ -55,7 +98,7 @@ export function applyFilters(jobs: Job[], filters: Filters, now: number = Date.n
     if (filters.seniority !== "All" && job.seniority !== filters.seniority) return false;
     if (filters.companyType !== "All" && job.companyType !== filters.companyType) return false;
     if (filters.category !== "All" && job.category !== filters.category) return false;
-    if (filters.source !== "All" && job.source !== filters.source) return false;
+    if (filters.source !== "All" && sourceLabel(job.source) !== filters.source) return false;
 
     if (filters.timeframeDays < 999) {
       const posted = new Date(job.postedDate).getTime();

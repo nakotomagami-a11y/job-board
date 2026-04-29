@@ -19,6 +19,20 @@ function freshnessCutoff(): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Lets the Claude for Chrome extension POST scraped jobs from a third-party
+// origin (linkedin.com, wellfound.com, etc.) directly to this localhost API,
+// closing the scrape loop without copy-paste. Local-first dev tool; the
+// freshness filter, rubric, and dedup still gate everything.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 async function getProfile(): Promise<UserProfile | null> {
   try { return JSON.parse(await fs.readFile(PROFILE_PATH, "utf-8")) as UserProfile; }
   catch { return null; }
@@ -100,9 +114,9 @@ export async function POST(req: Request) {
       total: merged.length,
       rejectedByRubric: rubricRejected.length,
       rejectedAsStale: staleRejected.length,
-    });
+    }, { headers: CORS_HEADERS });
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e) }, { status: 500, headers: CORS_HEADERS });
   }
 }
 
