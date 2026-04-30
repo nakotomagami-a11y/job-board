@@ -193,9 +193,20 @@ POST http://localhost:3000/api/scrape
 }
 ```
 
-Returns either rendered HTML or extracted text. Replaces the old Browser MCP path — no Chrome app needed, deterministic, in-process.
+Returns either rendered HTML or extracted text. Handles JS-rendered boards in-process (no Chrome app needed, deterministic).
 
 Note: requires Chromium installed locally. One-time setup: `npx playwright install chromium`.
+
+### Layer 3: Chrome MCP (`mcp__Claude_in_Chrome__*`, last-resort fallback for anti-bot boards)
+Some boards block both WebFetch (403) AND Playwright (DataDome / Cloudflare / login wall). For these, drive the user's real, logged-in Chrome session via Chrome MCP:
+
+- Boards that REQUIRE this layer: Wellfound, Welcome to the Jungle, NoFluffJobs, The Hub, WorkInStartups, CryptoJobsList, Solana Jobs (Getro), LinkedIn feed, Glassdoor, Indeed, Weekday, HiringCafe.
+- Tools: `mcp__Claude_in_Chrome__navigate`, `read_page`, `get_page_text`, `find`, `javascript_tool`, `tabs_create_mcp`.
+- The parent agent (not the subagent) drives Chrome MCP. Subagents return `[]` with `botBlocked: true` and the parent picks them up.
+
+**Hard rule: never skip a board on first failure.** If WebFetch fails → try `/api/scrape` → if that fails → drive Chrome MCP. Skipping is a bug, not a feature.
+
+**Login-required boards** (e.g. LinkedIn feed, Wellfound, Glassdoor logged-in views) get **queued for the end of the run**. The user will log in on demand; the parent then drives Chrome MCP through the authenticated session. Surface a single consolidated "ready to log in" prompt at the end — don't interrupt mid-batch.
 
 ### Cheap-execution rule: delegate the actual scrape to Haiku
 Do NOT run the WebFetch / `/api/scrape` calls from the parent agent yourself. Launch the **`job-board-scraper` subagent** (`.claude/agents/job-board-scraper.md`) — it runs on Haiku 4.5 and costs ~5× less. One subagent per board, in parallel when possible. The parent only orchestrates and merges the JSON arrays each subagent returns.

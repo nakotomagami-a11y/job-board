@@ -264,7 +264,7 @@ DELEGATE EACH BOARD TO HAIKU:
 
 Project: ${PROJECT_ROOT}
 Reference files (read for full context):
-- ${abs("docs/COMMANDS.md")} — JSON schema and search method (WebFetch first, /api/scrape fallback)
+- ${abs("docs/COMMANDS.md")} — JSON schema and 3-layer scrape chain (WebFetch → /api/scrape → Chrome MCP). NEVER skip a board on first failure.
 - ${abs("data/user/profile.json")} — full candidate profile
 - ${abs("data/user/jobs.json")} — existing ${existingJobs.length} jobs (full dedup list)
 - ${abs("src/shared/config/priority-boards.ts")} — board URLs

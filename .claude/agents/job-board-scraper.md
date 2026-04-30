@@ -20,11 +20,11 @@ You are a focused single-board job scraper. Your job is to fetch one job board, 
 2. **If WebFetch returns empty / 403 / bot challenge:**
    - For boards with public APIs (Remotive, RemoteOK, Jobicy, Arbeitnow, Greenhouse, Lever, Ashby), call the API endpoint directly via WebFetch.
    - For JS-rendered boards (Himalayas, startup.jobs, YC Work at a Startup, Working Nomads, Welcome to the Jungle, Climatebase, MeetFrank, pracuj.pl), call `POST http://localhost:3000/api/scrape` with `{ "url": "...", "waitFor": "networkidle" }` to get rendered HTML.
-3. **If the board is bot-blocked** (DataDome / Cloudflare challenge / Easy Apply login wall — Wellfound, Indeed, Glassdoor, HiringCafe, LinkedIn feed, Weekday, JustRemote), return `[]` immediately with a note. The parent agent has a fallback hierarchy for these:
-   1. **Claude for Chrome extension** (primary, automated) — Claude running inside the user's already-authenticated browser tab does the scrape and POSTs results directly to `http://localhost:3000/api/storage/jobs`. The storage route has CORS open for this exact handoff. Not a manual workflow — once the extension + desktop app are paired, it's hands-off.
-   2. **BrowserMCP** (`mcp__browsermcp__*` tools, configured in `.mcp.json`) — Claude Code drives the user's authenticated browser tab directly. Use this when Claude for Chrome isn't running or for repetitive sweeps where the parent agent should orchestrate.
+3. **If the board is bot-blocked or requires login** (DataDome / Cloudflare challenge / Easy Apply login wall — Wellfound, Indeed, Glassdoor, HiringCafe, LinkedIn feed, Weekday, JustRemote, Welcome to the Jungle, NoFluffJobs, The Hub, WorkInStartups, CryptoJobsList, Solana Jobs/Getro), return `[]` immediately with `"botBlocked": true`, `"requiresLogin": true|false`, and a one-sentence note. Login-required boards are queued for the END of the run — the user logs in, then the parent drives Chrome MCP through the authenticated session. The parent agent has a fallback hierarchy for these — DO NOT skip the board, hand it back to the parent:
+   1. **Claude in Chrome** (`mcp__Claude_in_Chrome__*` tools — primary fallback) — the parent drives the user's logged-in Chrome via `navigate`, `read_page`, `find`, `get_page_text`, `javascript_tool`, and `tabs_create_mcp`. The user is already authenticated for these sites.
+   2. **Claude Preview** (`mcp__Claude_Preview__*` tools) — alt headless browser if Chrome MCP is unavailable.
    3. **Manual paste** — last resort. The user dumps raw HTML or copy-pastes a card list and Claude Code parses it.
-   Don't waste subagent tokens trying to bypass anti-bot measures via curl/Playwright — those paths have been tried and verified blocked.
+   Don't waste subagent tokens trying to bypass anti-bot measures via curl/Playwright — those paths have been tried and verified blocked. The parent must NEVER skip a botBlocked board on first failure.
 4. **Extract listings** matching the search terms and hard filters.
 5. **Return** a JSON array of jobs in the schema below. No prose, no markdown — just the array.
 
