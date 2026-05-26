@@ -66,8 +66,8 @@ The app generates search prompts (saved to `data/user/command-prompt.txt` and `d
      "companyType": "Startup|Agency|Big Tech|Other",
      "location": "City, Country",
      "region": "Europe|Remote|North America|UK|Asia|Hybrid",
-     "roleType": "Frontend|Mobile|Full-Stack (Frontend-leaning)|Design Engineer|Creative Developer",
-     "seniority": "Junior|Mid|Senior|Staff|Principal|Lead|Manager",
+     "roleType": "Frontend|Mobile|Full-Stack (Frontend-leaning)|Design Engineer|Creative Developer|Generalist / Product Engineer|AI Engineer",
+     "seniority": "Junior|Mid|Senior|Staff|Lead|Principal|Manager",
      "url": "https://actual-apply-link",
      "tags": ["React", "TypeScript"],
      "salary": "$100k-150k or null",
@@ -75,11 +75,24 @@ The app generates search prompts (saved to `data/user/command-prompt.txt` and `d
      "verifiedDate": "YYYY-MM-DD",
      "source": "board name",
      "remote": true,
-     "category": "Gaming|Crypto / Web3|AI / ML|Fintech|SaaS / Dev Tools|E-Commerce|Other",
+     "category": "Gaming|Crypto / Web3|AI / ML|Fintech|SaaS / Dev Tools|E-Commerce|Social / Community|Other",
      "sourceType": "agent",
      "description": "1-2 sentence description"
    }
    ```
+
+   **roleType mapping** (use the most specific match; never drop "Founding Engineer", "Software Engineer", "Product Engineer" — use `Generalist / Product Engineer`):
+   | Title patterns | roleType |
+   |---|---|
+   | frontend, front-end, react developer, ui engineer, web developer | `Frontend` |
+   | react native, mobile, ios, android, flutter | `Mobile` |
+   | full stack, fullstack, full-stack, middle full-stack | `Full-Stack (Frontend-leaning)` |
+   | design engineer | `Design Engineer` |
+   | creative developer, creative technologist | `Creative Developer` |
+   | software engineer, founding engineer, product engineer, forward deployed | `Generalist / Product Engineer` |
+   | ai engineer, ml engineer, llm engineer, genai engineer, applied ai | `AI Engineer` |
+
+   **Freshness cutoff:** storage layer drops anything older than **7 days** — don't waste time on stale listings.
 
 ---
 
@@ -293,13 +306,26 @@ The off-site apply URL is in the page's JSON-LD `<script type="application/ld+js
 
 ### Keyword combinations that move volume
 
-Run each as a separate query and dedupe by `JOB_ID`:
-- `"react developer"`, `react.js`, `"react native"`
-- `"frontend engineer"`, `"front-end developer"`, `"front end engineer"`
-- `"design engineer"`, `"ui engineer"`, `"creative developer"`, `"creative technologist"`
-- `"javascript engineer"`, `"typescript engineer"`
-- `"web developer"` + `f_E=3,4` to filter junior junk
-- Mobile: `"mobile engineer"`, `"ios engineer"`, `"android engineer"`, `flutter developer`
+Derive keywords from `profile.preferredRoles` + alias expansions when available. Default sweep:
+
+**Core FE:**
+- `"react developer"`, `react.js`, `"frontend engineer"`, `"front-end developer"`, `"ui engineer"`
+- `"typescript engineer"`, `"javascript engineer"`, `"web developer"` + `f_E=3,4`
+
+**Mobile:**
+- `"react native"`, `"mobile engineer"`, `"ios engineer"`, `"android engineer"`, `flutter developer`
+
+**Generalist / Product:**
+- `"software engineer"` + `f_E=4` (mid-senior), `"product engineer"`, `"founding engineer"`
+- `"forward deployed engineer"`, `"platform engineer"`
+
+**Creative / Design:**
+- `"design engineer"`, `"creative developer"`, `"creative technologist"`
+
+**AI-adjacent:**
+- `"ai engineer"`, `"genai engineer"`, `"llm engineer"`, `"applied ai engineer"`
+
+**Budget:** 10 keywords × 3 locations × 4 pages = ~120 requests/run — stays under the 1k/day soft cap with room to spare. Prioritise profile's top-ranked preferredRoles first, trim the tail if needed.
 
 Combining a keyword with `f_WT=2` (remote) + `f_TPR=r86400` (24h) typically yields 200–500 fresh hits per day across all keywords for EU+remote.
 

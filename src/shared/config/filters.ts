@@ -15,6 +15,8 @@ export const ROLE_TYPES = [
   "Full-Stack (Frontend-leaning)",
   "Design Engineer",
   "Creative Developer",
+  "Generalist / Product Engineer",
+  "AI Engineer",
 ] as const;
 
 export const SENIORITIES = [
@@ -23,8 +25,8 @@ export const SENIORITIES = [
   "Mid",
   "Senior",
   "Staff",
-  "Principal",
   "Lead",
+  "Principal",
   "Manager",
 ] as const;
 
@@ -74,4 +76,6 @@ export const ROLE_TYPE_COLORS: Record<string, string> = {
   "Full-Stack (Frontend-leaning)": "#fb923c",
   "Design Engineer": "#f472b6",
   "Creative Developer": "#a78bfa",
+  "Generalist / Product Engineer": "#fbbf24",
+  "AI Engineer": "#22d3ee",
 };

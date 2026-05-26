@@ -11,15 +11,17 @@ export type RoleType =
   | "Mobile"
   | "Full-Stack (Frontend-leaning)"
   | "Design Engineer"
-  | "Creative Developer";
+  | "Creative Developer"
+  | "Generalist / Product Engineer"
+  | "AI Engineer";
 
 export type Seniority =
   | "Junior"
   | "Mid"
   | "Senior"
   | "Staff"
-  | "Principal"
   | "Lead"
+  | "Principal"
   | "Manager";
 
 export type CompanyType =

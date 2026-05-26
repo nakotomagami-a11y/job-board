@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ATS_COMPANIES, atsListingsUrl, type AtsCompany } from "@shared/config/ats-companies";
+import { canonicalizeRole } from "@shared/config/role-aliases";
 import { rateLimit } from "@lib/rate-limit";
 import { sanitizeJobs } from "@lib/sanitize-job";
 import type { Job } from "@shared/types/job";
@@ -8,15 +9,26 @@ export const maxDuration = 30;
 
 const FETCH_TIMEOUT_MS = 8000;
 const FETCH_CONCURRENCY = 6;
-// Frontend / mobile / design-engineer keywords. Listings whose title contains
-// any of these (case-insensitive) survive the first-pass filter.
+// Titles containing any of these survive the first-pass filter.
+// Covers the full set of roles we care about — generalist/product eng and
+// AI-adjacent roles are intentionally included here.
 const KEYWORDS = [
+  // Core FE
   "frontend", "front-end", "front end",
-  "react", "next.js", "nextjs",
-  "mobile", "ios", "android", "react native",
-  "design engineer", "creative developer", "ui engineer",
+  "react", "next.js", "nextjs", "vue", "angular",
   "javascript", "typescript",
+  "ui engineer", "ui developer", "web developer", "web engineer",
+  // Mobile
+  "mobile", "ios", "android", "react native", "flutter",
+  // Creative / design
+  "design engineer", "creative developer", "creative technologist",
+  // Generalist / product
+  "software engineer", "product engineer", "founding engineer",
+  "forward deployed", "solutions engineer", "platform engineer",
   "full stack", "fullstack", "full-stack",
+  // AI-adjacent
+  "ai engineer", "ml engineer", "llm engineer", "genai engineer",
+  "applied ai", "machine learning engineer",
 ];
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -49,12 +61,7 @@ function inferRegion(location: string): Job["region"] {
 }
 
 function inferRoleType(title: string): Job["roleType"] {
-  const t = title.toLowerCase();
-  if (t.includes("react native") || t.includes("ios") || t.includes("android") || t.includes("mobile")) return "Mobile";
-  if (t.includes("design engineer")) return "Design Engineer";
-  if (t.includes("creative")) return "Creative Developer";
-  if (t.includes("full") && t.includes("stack")) return "Full-Stack (Frontend-leaning)";
-  return "Frontend";
+  return canonicalizeRole(title);
 }
 
 function inferSeniority(title: string): Job["seniority"] {

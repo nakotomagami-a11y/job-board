@@ -8,12 +8,13 @@ export const SCORING_WEIGHTS = {
   salaryMatch: 5,
 } as const;
 
+// Industry convention: Lead ≈ Staff in most orgs, both below Principal.
 export const SENIORITY_ORDER = [
   "Junior",
   "Mid",
   "Senior",
   "Staff",
-  "Principal",
   "Lead",
+  "Principal",
   "Manager",
 ] as const;

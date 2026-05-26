@@ -40,14 +40,18 @@ Each request returns ~10–25 `<li>` cards. Each card has `data-entity-urn="urn:
 
 For the apply URL: fetch `https://www.linkedin.com/jobs/view/{JOB_ID}` and extract from the JSON-LD block (`hiringOrganization.url`) or the "Apply on company website" button. If neither exists it's an Easy Apply — record it as `apply_via_linkedin` and use the `/jobs/view/{JOB_ID}` URL itself.
 
-Useful filters (always pass `f_TPR=r604800` to limit to last 7 days — the storage route rejects anything older anyway):
-- `f_TPR=r86400` (24h) / `r604800` (7d, default) — DO NOT use `r2592000` (30d) since the storage layer drops anything >7d
+Useful filters (always pass `f_TPR=r604800` to limit to last 7 days — the storage route rejects anything older):
+- `f_TPR=r86400` (24h) / `r604800` (7d, default) — DO NOT use `r1209600` (14d) or `r2592000` (30d) since the storage layer drops anything >7d
 - `f_WT=2` (remote) / `1,3` (onsite + hybrid)
 - `f_E=3,4` (associate + mid-senior — filters out junior junk)
 - `sortBy=DD` (newest first)
 
-Run **multiple keyword queries** and dedupe by `JOB_ID`:
-- `"react developer"`, `"react native"`, `"frontend engineer"`, `"design engineer"`, `"ui engineer"`, `"typescript engineer"`, `"mobile engineer"`
+Run **multiple keyword queries** and dedupe by `JOB_ID`. Derive the list from `profile.preferredRoles` when provided; otherwise use this default set:
+- Core FE: `"react developer"`, `"frontend engineer"`, `"ui engineer"`, `"typescript engineer"`, `"web developer"`
+- Mobile: `"react native"`, `"mobile engineer"`, `"ios engineer"`, `"android engineer"`
+- Generalist: `"software engineer"`, `"product engineer"`, `"founding engineer"`, `"forward deployed engineer"`
+- Creative/Design: `"design engineer"`, `"creative developer"`
+- AI-adjacent: `"ai engineer"`, `"genai engineer"`, `"llm engineer"`
 
 Throttle to 1 request every 2–4 seconds. Use `User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ... Chrome/124.0.0.0`. On 429: stop and return what you have.
 
@@ -63,8 +67,8 @@ Cap your output at 25 jobs per LinkedIn run — quality over quantity, the paren
   "companyType": "Startup",
   "location": "City, Country or Remote",
   "region": "Remote|Europe|North America|Asia|UK|Hybrid",
-  "roleType": "Frontend|Mobile|Full-Stack (Frontend-leaning)|Design Engineer|Creative Developer",
-  "seniority": "Junior|Mid|Senior|Staff|Principal|Lead|Manager",
+  "roleType": "Frontend|Mobile|Full-Stack (Frontend-leaning)|Design Engineer|Creative Developer|Generalist / Product Engineer|AI Engineer",
+  "seniority": "Junior|Mid|Senior|Staff|Lead|Principal|Manager",
   "url": "https://direct-application-url",
   "tags": ["React", "TypeScript"],
   "salary": "$120k-$150k or null",
@@ -78,11 +82,27 @@ Cap your output at 25 jobs per LinkedIn run — quality over quantity, the paren
 }
 ```
 
+### roleType mapping guide
+
+Pick the **most specific** match. When in doubt, prefer broader over dropping the job.
+
+| Title patterns | roleType |
+|---|---|
+| frontend, front-end, react developer, ui engineer, typescript engineer, web developer, next.js | `Frontend` |
+| react native, mobile, ios, android, flutter | `Mobile` |
+| full stack, fullstack, full-stack, middle full-stack | `Full-Stack (Frontend-leaning)` |
+| design engineer | `Design Engineer` |
+| creative developer, creative technologist, webgl developer | `Creative Developer` |
+| software engineer, founding engineer, product engineer, forward deployed, solutions engineer, platform engineer | `Generalist / Product Engineer` |
+| ai engineer, ml engineer, llm engineer, genai engineer, applied ai, machine learning engineer | `AI Engineer` |
+
+Seniority aliases: "sr." / "III" → Senior; "middle" / "mid-level" / "II" → Mid; "jr." / entry / graduate → Junior; "lead" maps to Lead (between Staff and Principal in seniority order).
+
 ## Rules — drop the listing if ANY are true
 
 - URL is a search-results page, listing index, or returns 404/410.
-- postedDate is older than 7 days from today, OR is missing/unverifiable. HARD RULE: never invent or estimate a date — if the listing card doesn't surface a date and you can't get one without clicking through, drop the listing or click through to the detail page to read the exact "Posted N days ago" / absolute date label. Do not fall back to "today" or to a URL filter parameter (e.g. `fromage=7`) as a stand-in for the actual postedDate. The storage route enforces this server-side and will reject anything dateless.
-- Role is backend-only, devops, data, PM, marketing, recruiting, or design (not engineering).
+- postedDate is older than **14 days** from today, OR is missing/unverifiable. HARD RULE: never invent or estimate a date — if the listing card doesn't surface a date and you can't get one without clicking through, drop the listing or click through to the detail page to read the exact "Posted N days ago" / absolute date label. Do not fall back to "today" or to a URL filter parameter (e.g. `fromage=7`) as a stand-in for the actual postedDate. The storage route enforces this server-side and will reject anything dateless.
+- Role is backend-only, devops, data, PM, marketing, recruiting, or design (not engineering). **Do NOT drop** "Software Engineer", "Founding Engineer", "Product Engineer", "Forward Deployed Engineer", or "Platform Engineer" — these are valid generalist roles even if they don't have "frontend" in the title.
 - Tech stack has zero overlap with `candidateSkills`.
 - Hard filter violation (wrong region, wrong country, not remote when remoteOnly is set).
 

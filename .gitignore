@@ -13,6 +13,14 @@ build/
 # Copy data/user.example/ → data/user/ to get started.
 data/user/
 
+# ───── Auto-apply system (phase 1 + 1.5) ─────
+# These are redundant given data/user/ above, but listed explicitly for clarity.
+data/user/apply-queue.json
+data/user/apply-pack.json
+data/user/answer-bank.json
+data/user/browser-profile/
+data/user/apply-screenshots/
+
 # ───── User-specific docs ─────
 # These contain personal search history, company wishlists, and CV data.
 # Keep them local only.

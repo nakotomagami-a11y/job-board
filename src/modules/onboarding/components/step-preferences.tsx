@@ -28,9 +28,11 @@ const LABEL_STYLE = {
 
 const FALLBACK_ROLES = [
   "Frontend Developer",
+  "React Developer",
   "Mobile Developer",
   "Full-Stack Developer",
   "Software Engineer",
+  "Product Engineer",
 ];
 
 const FALLBACK_CATEGORIES = [
@@ -45,15 +47,22 @@ const FALLBACK_CATEGORIES = [
 // Broader suggestions for the suggestion panel
 const SUGGESTED_ROLES = [
   "Frontend Developer",
-  "Mobile Developer",
-  "Full-Stack Developer",
+  "Frontend Engineer",
   "React Developer",
   "React Native Developer",
+  "Mobile Developer",
+  "Mobile Engineer",
+  "Full-Stack Developer",
+  "Software Engineer",
+  "Product Engineer",
+  "Founding Engineer",
+  "Forward Deployed Engineer",
   "UI Engineer",
   "Design Engineer",
   "Creative Developer",
   "Web Developer",
-  "Software Engineer",
+  "TypeScript Engineer",
+  "GenAI Engineer",
 ];
 
 const SUGGESTED_CATEGORIES = [
@@ -385,13 +394,41 @@ export function StepPreferences({
     return () => ctrl.abort();
   }, []);
 
+  // Normalize category names from cv-analysis to the canonical list used
+  // by the rest of the app so suggestions don't create orphan filter values.
+  const normalizeCategory = (c: string): string => {
+    const map: Record<string, string> = {
+      "web3 / blockchain": "Crypto / Web3",
+      "web3": "Crypto / Web3",
+      "blockchain": "Crypto / Web3",
+      "defi": "Crypto / Web3",
+      "crypto": "Crypto / Web3",
+      "e-commerce": "E-Commerce",
+      "ecommerce": "E-Commerce",
+      "fintech": "Fintech",
+      "fin-tech": "Fintech",
+      "saas": "SaaS / Dev Tools",
+      "dev tools": "SaaS / Dev Tools",
+      "developer tools": "SaaS / Dev Tools",
+      "social": "Social / Community",
+      "community": "Social / Community",
+      "ai": "AI / ML",
+      "ml": "AI / ML",
+      "machine learning": "AI / ML",
+    };
+    return map[c.toLowerCase()] ?? c;
+  };
+
   // Use Claude's suggestions first, then fall back to hardcoded
   const roleSuggestions = claudeAnalysis.suggestedRoles?.length
     ? [...new Set([...claudeAnalysis.suggestedRoles, ...FALLBACK_ROLES])]
     : buildRoleSuggestions(draft.skills);
 
   const categorySuggestions = claudeAnalysis.suggestedCategories?.length
-    ? [...new Set([...claudeAnalysis.suggestedCategories, ...FALLBACK_CATEGORIES])]
+    ? [...new Set([
+        ...claudeAnalysis.suggestedCategories.map(normalizeCategory),
+        ...FALLBACK_CATEGORIES,
+      ])]
     : buildCategorySuggestions(draft.skills, draft.cvText);
 
   return (
@@ -545,6 +582,15 @@ function buildRoleSuggestions(skills: string[]): string[] {
   if (skillsLower.some((s) => ["node.js", "express", "postgresql", "mongodb"].includes(s))) {
     suggestions.add("Full-Stack Developer");
   }
+  // AI-adjacent tooling → suggest GenAI roles
+  if (skillsLower.some((s) => ["anthropic claude", "chatgpt", "openai", "langchain", "llm"].includes(s))) {
+    suggestions.add("GenAI Engineer");
+    suggestions.add("AI Frontend Engineer");
+  }
+  // Always show generalist roles for experienced engineers
+  suggestions.add("Product Engineer");
+  suggestions.add("Founding Engineer");
+  suggestions.add("Software Engineer");
 
   return Array.from(suggestions);
 }

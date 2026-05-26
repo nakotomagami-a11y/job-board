@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "fields": {
+    "email": {
+      "value": "",
+      "type": "email",
+      "questionVariants": ["Email", "Email Address", "E-mail", "Your email"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "firstName": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["First Name", "Given Name", "First name"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "lastName": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Last Name", "Surname", "Family Name", "Last name"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "fullName": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Full Name", "Your Name", "Name", "Full name"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "phone": {
+      "value": "",
+      "type": "phone",
+      "questionVariants": ["Phone", "Phone Number", "Telephone", "Mobile", "Mobile Number", "Phone number"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "country": {
+      "value": "",
+      "type": "country",
+      "questionVariants": ["Country", "Country of Residence", "Country of Citizenship", "Country/Region"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "linkedinUrl": {
+      "value": "",
+      "type": "url",
+      "questionVariants": ["LinkedIn", "LinkedIn URL", "LinkedIn Profile", "LinkedIn profile URL"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "githubUrl": {
+      "value": "",
+      "type": "url",
+      "questionVariants": ["GitHub", "GitHub URL", "GitHub Profile", "Github profile URL"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "portfolioUrl": {
+      "value": "",
+      "type": "url",
+      "questionVariants": ["Portfolio", "Portfolio URL", "Personal Website", "Personal Site", "Website", "Personal website URL"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "yearsOfReact": {
+      "value": "",
+      "type": "number",
+      "questionVariants": ["Years of React experience", "Years of React", "React experience (years)", "How many years of React", "Years using React"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "yearsOfTypeScript": {
+      "value": "",
+      "type": "number",
+      "questionVariants": ["Years of TypeScript experience", "Years of TypeScript", "TypeScript experience (years)", "How many years of TypeScript"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "salaryExpectationUSD": {
+      "value": "",
+      "type": "number",
+      "questionVariants": ["Salary Expectation", "Expected Salary", "Desired Salary", "Compensation", "Salary expectations (USD)", "Desired compensation"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "workAuthorization": {
+      "value": "",
+      "type": "shortAnswer",
+      "questionVariants": ["Work Authorization", "Right to Work", "Work Permit", "Are you authorized to work?", "Work authorization status"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "visaSponsorship": {
+      "value": "",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Do you require visa sponsorship?", "Will you need US work authorization sponsorship?", "Are you authorized to work without sponsorship?", "Do you need visa sponsorship?", "Will you require sponsorship?"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "willingnessToRelocate": {
+      "value": "",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Are you willing to relocate?", "Willingness to relocate", "Would you be willing to relocate?", "Open to relocation?"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "willingnessToOfficeHybrid": {
+      "value": "",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Are you willing to work in office?", "Are you open to hybrid work?", "Are you willing to commute?", "Office/hybrid willingness"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "noticePeriod": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Notice Period", "What is your notice period?", "How much notice do you need?", "Start Date / Notice Period", "Notice period / Availability"],
+      "source": "apply-pack",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "currentLocation": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Current Location", "Where are you located?", "What is the address from which you plan on working?", "City, Country", "Location"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "previouslyInterviewed": {
+      "value": "No",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Have you previously interviewed with us?", "Have you applied before?", "Have you previously applied?", "Previous application at this company?"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    }
+  }
+}

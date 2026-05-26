@@ -13,6 +13,7 @@ import { SourcesPanel } from "./sources-panel";
 import { CountrySearch } from "./country-search";
 import { CompanyTracker } from "./company-tracker";
 import { SearchConfig, type SearchParams } from "./search-config";
+import { PendingApplications } from "./pending-applications";
 import { ROUTES, API } from "@lib/constants";
 import { salarySortValue } from "@lib/salary";
 
@@ -288,6 +289,8 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       </header>
 
       <StatsBar jobs={jobs} filteredCount={filtered.length} />
+
+      <PendingApplications />
 
       {/* Actions row */}
       <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" }}>

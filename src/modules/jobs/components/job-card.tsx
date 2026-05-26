@@ -44,6 +44,13 @@ function daysAgo(dateStr: string): string {
   return `${Math.floor(diff / 30)}mo ago`;
 }
 
+function isStale(dateStr: string): boolean {
+  const diff = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return diff >= 8;
+}
+
 export function JobCard({ job, index, onMarkApplied, onReject }: JobCardProps) {
   const companyColor = getCompanyColor(job.company);
   const regionColor = REGION_COLORS[job.region] ?? "#818cf8";
@@ -156,7 +163,23 @@ export function JobCard({ job, index, onMarkApplied, onReject }: JobCardProps) {
 
           <span className="badge badge-seniority">{job.seniority}</span>
 
-          <span className="job-date">{daysAgo(job.postedDate)}</span>
+          <span
+            className="job-date"
+            style={isStale(job.postedDate) ? { color: "var(--text-dim)" } : undefined}
+          >
+            {daysAgo(job.postedDate)}
+            {isStale(job.postedDate) && (
+              <span
+                style={{
+                  marginLeft: 4, fontSize: "0.65rem", fontWeight: 600,
+                  color: "#ca8a04", background: "rgba(202,138,4,0.1)",
+                  borderRadius: 4, padding: "1px 5px",
+                }}
+              >
+                stale
+              </span>
+            )}
+          </span>
         </div>
 
         {/* Salary */}

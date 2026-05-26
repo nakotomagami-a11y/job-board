@@ -1,16 +1,21 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+
+const PROJECT_ROOT = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // Pin the workspace root. Without this, Turbopack walks up the tree looking
-  // for a lockfile and lands on C:\Users\Saphire\yarn.lock, then tries to
-  // watch/scan the entire user profile — which spawns enough worker processes
-  // to OOM the machine.
+  distDir: ".next",
   turbopack: {
-    root: process.cwd(),
+    root: PROJECT_ROOT,
   },
+  serverExternalPackages: [
+    "playwright-extra",
+    "puppeteer-extra-plugin-stealth",
+    "puppeteer-extra-plugin",
+  ],
   webpack: (config) => {
     config.resolve.alias.canvas = false;
     return config;

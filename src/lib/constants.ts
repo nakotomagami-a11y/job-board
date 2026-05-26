@@ -16,6 +16,9 @@ export const API = {
   parseCv: "/api/parse-cv",
   cvAnalysis: "/api/cv-analysis",
   searchHistory: "/api/search-history",
+  applyDraft: "/api/apply/draft",
+  applyConfirm: "/api/apply/confirm",
+  applyQueue: "/api/apply/queue",
 } as const;
 
 export const STORAGE_KEYS = {

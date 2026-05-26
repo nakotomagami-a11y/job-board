@@ -1,6 +1,7 @@
 import type { Job } from "@shared/types/job";
 import type { UserProfile } from "@shared/types/profile";
 import { SCORING_WEIGHTS, SENIORITY_ORDER } from "@shared/config/scoring";
+import { roleMatchesPrefs } from "@shared/config/role-aliases";
 import { parseSalary } from "./salary";
 
 /**
@@ -42,14 +43,26 @@ export function rubricReject(
     if (ageDays > maxAgeDays) return `posted ${Math.round(ageDays)} days ago (>${maxAgeDays})`;
   }
 
-  // 3. Skill overlap — only enforced when both sides have data.
-  if (profile.skills.length > 0 && job.tags.length > 0) {
-    const profileSkills = profile.skills.map((s) => s.toLowerCase());
-    const jobTags = job.tags.map((t) => t.toLowerCase());
-    const anyOverlap = profileSkills.some((s) =>
-      jobTags.some((t) => t.includes(s) || s.includes(t)),
-    );
-    if (!anyOverlap) return "zero overlap with candidate skills";
+  // 3. Skill overlap — enforced when profile has skills AND we have data to
+  //    evaluate. Skip entirely when both tags and description are absent (e.g.
+  //    ATS API cards) — the title-only check is too narrow and produces false
+  //    rejects for generic titles like "Software Engineer".
+  if (profile.skills.length > 0) {
+    const hasData = job.tags.length > 0 || (job.description ?? "").trim().length > 0;
+    if (hasData) {
+      const profileSkills = profile.skills.map((s) => s.toLowerCase());
+      if (job.tags.length > 0) {
+        const jobTags = job.tags.map((t) => t.toLowerCase());
+        const anyOverlap = profileSkills.some((s) =>
+          jobTags.some((t) => t.includes(s) || s.includes(t)),
+        );
+        if (!anyOverlap) return "zero overlap with candidate skills";
+      } else {
+        const haystack = `${job.title} ${job.description ?? ""}`.toLowerCase();
+        const anyOverlap = profileSkills.some((s) => haystack.includes(s));
+        if (!anyOverlap) return "zero overlap with candidate skills (no tags; scanned title+desc)";
+      }
+    }
   }
 
   return null;
@@ -82,34 +95,37 @@ export function scoreJob(job: Job, profile: UserProfile, now: number = Date.now(
   // off-region remote-allowed jobs get a smaller bonus when the candidate is
   // remote-leaning. This is what makes "EU first, then remote anywhere" actually
   // bias the ranking instead of treating both regions equally.
+  //
+  // When a job is remote=true AND has a specific region (e.g. "Europe"),
+  // check both labels and award the better score — a "Remote, EU-based" job
+  // randomly gets tagged either "Remote" or "Europe" by the subagent, so we
+  // shouldn't penalise it for which label won the coin flip.
   if (profile.preferredRegions.length > 0) {
-    const idx = profile.preferredRegions.indexOf(job.region);
-    if (idx === 0) {
-      total += SCORING_WEIGHTS.regionMatch;          // 20 — top-priority region
-    } else if (idx > 0) {
-      total += SCORING_WEIGHTS.regionMatch * 0.7;    // 14 — listed but not top
-    } else if (profile.remotePreference === "remote" && job.remote) {
-      total += SCORING_WEIGHTS.regionMatch * 0.5;    // 10 — off-region remote
+    const regionCandidates: string[] = [job.region];
+    if (job.remote && job.region !== "Remote") regionCandidates.push("Remote");
+
+    let regionScore = 0;
+    for (const candidate of regionCandidates) {
+      const idx = profile.preferredRegions.indexOf(candidate as typeof profile.preferredRegions[number]);
+      let s = 0;
+      if (idx === 0) s = SCORING_WEIGHTS.regionMatch;
+      else if (idx > 0) s = SCORING_WEIGHTS.regionMatch * 0.7;
+      else if (profile.remotePreference === "remote" && job.remote) s = SCORING_WEIGHTS.regionMatch * 0.5;
+      if (s > regionScore) regionScore = s;
     }
+    total += regionScore;
   } else if (profile.remotePreference === "remote" && job.remote) {
     total += SCORING_WEIGHTS.regionMatch;
   } else {
     total += SCORING_WEIGHTS.regionMatch * 0.5;
   }
 
-  // Role type match (20 pts) — fuzzy match against free-form preferred roles
+  // Role type match (20 pts) — alias-aware fuzzy match against preferredRoles.
+  // roleMatchesPrefs checks direct substrings AND canonical-role equivalence,
+  // so "React Developer" in prefs still matches a job tagged "Frontend" even
+  // if neither string contains the other.
   if (profile.preferredRoles.length > 0) {
-    const jobRoleLower = job.roleType.toLowerCase();
-    const jobTitleLower = job.title.toLowerCase();
-    const hasMatch = profile.preferredRoles.some((pref) => {
-      const prefLower = pref.toLowerCase();
-      return (
-        jobRoleLower.includes(prefLower) ||
-        prefLower.includes(jobRoleLower) ||
-        jobTitleLower.includes(prefLower) ||
-        prefLower.includes(jobTitleLower.split(",")[0])
-      );
-    });
+    const hasMatch = roleMatchesPrefs(job.roleType, job.title, profile.preferredRoles);
     total += hasMatch
       ? SCORING_WEIGHTS.roleTypeMatch
       : SCORING_WEIGHTS.roleTypeMatch * 0.2;
