@@ -1,4 +1,10 @@
-export type ApplyStatus = 'pending_review' | 'awaiting_answers' | 'submitted' | 'cancelled' | 'failed';
+export type ApplyStatus =
+  | 'processing'        // Playwright actively filling — blocks new drafts
+  | 'awaiting_answers'
+  | 'pending_review'
+  | 'submitted'
+  | 'cancelled'
+  | 'failed';
 
 export interface UnansweredQuestion {
   questionText: string;
@@ -19,6 +25,8 @@ export interface ApplyQueueEntry {
   submittedAt?: string;
   postSubmitScreenshotPath?: string;
   unansweredQuestions?: UnansweredQuestion[];
+  batchId?: string;
+  processingStartedAt?: string;
 }
 
-// phase 2: video recording path, LinkedIn Easy Apply modal flag
+// phase 3: video recording path, LinkedIn Easy Apply modal flag

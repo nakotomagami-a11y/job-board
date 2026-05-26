@@ -18,7 +18,13 @@ export const API = {
   searchHistory: "/api/search-history",
   applyDraft: "/api/apply/draft",
   applyConfirm: "/api/apply/confirm",
+  applyAnswer: "/api/apply/answer",
+  applyBank: "/api/apply/bank",
   applyQueue: "/api/apply/queue",
+  applyBatch: "/api/apply/batch",
+  applyBatchStart: "/api/apply/batch/start",
+  applyBatchCancel: "/api/apply/batch/cancel",
+  blocklist: "/api/blocklist/companies",
 } as const;
 
 export const STORAGE_KEYS = {

@@ -7,6 +7,8 @@ import { mergeJobs } from "@lib/job-dedup";
 import { sanitizeJobs } from "@lib/sanitize-job";
 import { recordSubmission, recordRejection } from "@lib/board-stats";
 import { rubricReject } from "@lib/score-job";
+import { classifyRegion } from "@lib/region-filter";
+import { readBlocklist, isBlocked } from "@lib/company-blocklist";
 
 const USER_JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
 const PROFILE_PATH = path.join(process.cwd(), "data", "user", "profile.json");
@@ -71,6 +73,32 @@ export async function POST(req: Request) {
       return true;
     });
 
+    // Hard region gate — EU/EEA/UK only. Non-EU jobs are dropped before rubric
+    // or dedup so they never touch storage. 'unknown' verdicts (ambiguous or
+    // worldwide-remote) are let through for manual review.
+    const regionRejected: { id: string; location: string }[] = [];
+    const afterRegion = newJobs.filter((j) => {
+      const verdict = classifyRegion(j.location ?? '', j.region ?? '', j.remote ?? false);
+      if (verdict === 'non_eu') {
+        regionRejected.push({ id: j.id, location: j.location ?? '' });
+        console.log(`[region-filter] rejected non-EU: ${j.id} — "${j.location ?? ''}"`);
+        return false;
+      }
+      return true;
+    });
+
+    // Hard company blocklist — drop permanently blocked companies before rubric.
+    const blocklist = await readBlocklist();
+    const blockedRejected: { id: string; company: string }[] = [];
+    const afterBlocklist = afterRegion.filter((j) => {
+      if (isBlocked(j.company ?? '', blocklist)) {
+        blockedRejected.push({ id: j.id, company: j.company ?? '' });
+        console.log(`[company-blocklist] rejected: ${j.id} — "${j.company ?? ''}"`);
+        return false;
+      }
+      return true;
+    });
+
     // Apply the hard-reject rubric BEFORE dedup. Anything failing it never
     // reaches storage — keeps the agent honest even if its filtering is loose.
     // Skip the rubric when no profile is set (e.g. fresh install) so we don't
@@ -78,7 +106,7 @@ export async function POST(req: Request) {
     const profile = await getProfile();
     const rubricRejected: { id: string; reason: string }[] = [];
     const accepted: Job[] = profile
-      ? newJobs.filter((j) => {
+      ? afterBlocklist.filter((j) => {
           const reason = rubricReject(j, profile);
           if (reason) {
             rubricRejected.push({ id: j.id, reason });
@@ -86,7 +114,7 @@ export async function POST(req: Request) {
           }
           return true;
         })
-      : newJobs;
+      : afterBlocklist;
 
     const { merged, added } = mergeJobs(existing, accepted);
 
@@ -114,6 +142,8 @@ export async function POST(req: Request) {
       total: merged.length,
       rejectedByRubric: rubricRejected.length,
       rejectedAsStale: staleRejected.length,
+      rejectedAsNonEu: regionRejected.length,
+      rejectedAsBlocked: blockedRejected.length,
     }, { headers: CORS_HEADERS });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500, headers: CORS_HEADERS });

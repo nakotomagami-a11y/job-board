@@ -1,7 +1,6 @@
-import type { BrowserContext, Page } from 'playwright';
+import type { Page } from 'playwright';
 
 export interface ApplySession {
-  context: BrowserContext;
   page: Page;
   // The selector/strategy string that found the submit button during draft.
   // Format: 'css:<selector>' | 'text:<button label>'

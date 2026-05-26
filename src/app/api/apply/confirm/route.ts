@@ -6,7 +6,7 @@ import type { Page } from 'playwright';
 
 // This is the ONLY place in the codebase that may click the submit button.
 // Defense layer (a): submit-click code lives only here.
-// Defense layer (b): refuses to act unless queue entry shows 'pending_review'.
+// Defense layer (b): refuses to submit unless queue entry shows 'pending_review'.
 
 export const maxDuration = 60;
 
@@ -25,6 +25,14 @@ async function resolveSubmitLocator(page: Page, strategy: string) {
   return page.locator(strategy).first();
 }
 
+async function closeAndCleanup(sessionId: string): Promise<void> {
+  const session = applySessions.get(sessionId);
+  if (session) {
+    await session.page.close().catch(() => {});
+    applySessions.delete(sessionId);
+  }
+}
+
 export async function POST(req: Request) {
   let body: ConfirmRequest;
   try {
@@ -41,12 +49,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "action must be 'submit' or 'cancel'" }, { status: 400 });
   }
 
-  // Defense layer (b): the queue entry MUST be pending_review.
   const queue = await readQueue();
   const entry = queue.find((e) => e.draftId === draftId);
   if (!entry) {
     return NextResponse.json({ error: `No queue entry found for draftId: ${draftId}` }, { status: 404 });
   }
+
+  if (action === 'cancel') {
+    // Allow cancel for both awaiting_answers and pending_review
+    if (entry.status !== 'pending_review' && entry.status !== 'awaiting_answers') {
+      return NextResponse.json(
+        { error: `Refused: entry status is '${entry.status}', expected 'pending_review' or 'awaiting_answers'` },
+        { status: 409 },
+      );
+    }
+    await closeAndCleanup(entry.sessionId);
+    entry.status = 'cancelled';
+    await upsertEntry(entry);
+    return NextResponse.json({ draftId, status: 'cancelled', screenshotPath: entry.screenshotPath });
+  }
+
+  // action === 'submit'
+  // Defense layer (b): the queue entry MUST be pending_review.
   if (entry.status !== 'pending_review') {
     return NextResponse.json(
       { error: `Refused: entry status is '${entry.status}', expected 'pending_review'` },
@@ -55,30 +79,16 @@ export async function POST(req: Request) {
   }
 
   const session = applySessions.get(entry.sessionId);
-
-  if (action === 'cancel') {
-    if (session) {
-      await session.page.close().catch(() => {});
-      await session.context.close().catch(() => {});
-      applySessions.delete(entry.sessionId);
-    }
-    entry.status = 'cancelled';
-    await upsertEntry(entry);
-    return NextResponse.json({ draftId, status: 'cancelled', screenshotPath: entry.screenshotPath });
-  }
-
-  // action === 'submit'
   if (!session) {
-    // Session was lost (e.g. server restart). Mark as failed so queue clears.
     entry.status = 'failed';
     await upsertEntry(entry);
     return NextResponse.json(
-      { error: 'Browser session no longer active. The draft was lost; mark it cancelled and start a new draft.' },
+      { error: 'Browser session no longer active. The draft was lost; cancel and start a new draft.' },
       { status: 410 },
     );
   }
 
-  const { page, context, submitStrategy } = session;
+  const { page, submitStrategy } = session;
 
   try {
     if (!submitStrategy) {
@@ -95,7 +105,6 @@ export async function POST(req: Request) {
 
     await page.waitForTimeout(1500);
 
-    // Post-submit screenshot.
     const postFile = `${draftId}-submitted.png`;
     const postPath = path.join(SCREENSHOTS_DIR, postFile);
     await page.screenshot({ path: postPath, fullPage: false });
@@ -119,7 +128,6 @@ export async function POST(req: Request) {
     );
   } finally {
     await page.close().catch(() => {});
-    await context.close().catch(() => {});
     applySessions.delete(entry.sessionId);
   }
 }

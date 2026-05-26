@@ -101,7 +101,17 @@
     "workAuthorization": {
       "value": "",
       "type": "shortAnswer",
-      "questionVariants": ["Work Authorization", "Right to Work", "Work Permit", "Are you authorized to work?", "Work authorization status"],
+      "questionVariants": [
+        "Work Authorization",
+        "Right to Work",
+        "Work Permit",
+        "Are you authorized to work?",
+        "Work authorization status",
+        "Do you currently have legal authorization to work in the country in which the job you're applying for is located?",
+        "Are you authorised to work in the country in which this role is located?",
+        "Do you have legal work authorization?",
+        "Authorized to work?"
+      ],
       "source": "apply-pack",
       "createdAt": "2026-05-26T00:00:00.000Z",
       "usedCount": 0
@@ -109,7 +119,16 @@
     "visaSponsorship": {
       "value": "",
       "type": "yesNoExplanation",
-      "questionVariants": ["Do you require visa sponsorship?", "Will you need US work authorization sponsorship?", "Are you authorized to work without sponsorship?", "Do you need visa sponsorship?", "Will you require sponsorship?"],
+      "questionVariants": [
+        "Do you require visa sponsorship?",
+        "Will you need US work authorization sponsorship?",
+        "Are you authorized to work without sponsorship?",
+        "Do you need visa sponsorship?",
+        "Will you require sponsorship?",
+        "Will you now or in the future require employment visa sponsorship to work in the country in which the job you're applying for is located?",
+        "Will you require sponsorship now or in the future?",
+        "Will you need US work authorization sponsorship in the future?"
+      ],
       "source": "apply-pack",
       "createdAt": "2026-05-26T00:00:00.000Z",
       "usedCount": 0
@@ -149,7 +168,140 @@
     "previouslyInterviewed": {
       "value": "No",
       "type": "yesNoExplanation",
-      "questionVariants": ["Have you previously interviewed with us?", "Have you applied before?", "Have you previously applied?", "Previous application at this company?"],
+      "questionVariants": [
+        "Have you previously interviewed with us?",
+        "Have you applied before?",
+        "Have you previously applied?",
+        "Previous application at this company?",
+        "Have you previously worked for this company?",
+        "Have you applied to this company before?"
+      ],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "preferredPronouns": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Preferred Pronouns", "Pronouns", "What are your pronouns?"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "locationCity": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Location (City)", "City", "Current City"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "currentCompany": {
+      "value": "",
+      "type": "shortText",
+      "questionVariants": ["Current or most recent company?", "Current Company", "Most Recent Employer", "Company you're working for"],
+      "source": "profile",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "hearAboutJob": {
+      "value": "Found role through job-board aggregator",
+      "type": "shortText",
+      "questionVariants": ["How did you hear about this job?", "Where did you first hear about this role?", "How did you find us?", "Source of application"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "hybridOfficeWillingness": {
+      "value": "No — remote only",
+      "type": "yesNoExplanation",
+      "questionVariants": [
+        "Are you willing to work from our office?",
+        "Office hybrid willingness",
+        "Are you open to in-office work?",
+        "Are you willing to work from our office location 3 days per week?",
+        "We work under a hybrid in-office model. Are you willing to work from our office location 3 days per week?"
+      ],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "previouslyWorkedHere": {
+      "value": "No",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Have you previously worked for this company?", "Have you previously worked here?", "Are you a former employee?"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "marketingOptIn": {
+      "value": "No",
+      "type": "yesNoExplanation",
+      "questionVariants": ["Please email me about future job openings", "Subscribe to future opportunities", "Future job notifications"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "consentDataProcessing": {
+      "value": "Yes",
+      "type": "yesNoExplanation",
+      "questionVariants": ["I consent to have my personal information retained", "I agree to the privacy policy", "I consent to data processing"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoGender": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Gender", "What is your gender?", "What gender identity do you most closely identify with?", "Gender Identity"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoEthnicity": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Are you Hispanic/Latino?", "Race/Ethnicity", "How would you describe your racial/ethnic background?", "Ethnicity", "Race", "What is your race or ethnicity?"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoVeteran": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Veteran Status", "Are you a veteran?", "Are you a veteran or active member of the United States Armed Forces?", "Military service"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoDisability": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Disability Status", "Do you have a disability?", "Do you have a disability or chronic condition", "Disability disclosure"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoSexualOrientation": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["What sexual orientation do you most closely identify with?", "Sexual orientation", "LGBTQ+ identification"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoAgeRange": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["What age range do you fall within?", "Age", "Age range", "Date of Birth"],
+      "source": "default",
+      "createdAt": "2026-05-26T00:00:00.000Z",
+      "usedCount": 0
+    },
+    "eeoTransgender": {
+      "value": "Decline to answer",
+      "type": "shortText",
+      "questionVariants": ["Are you a person of transgender experience?", "Transgender", "Gender modality"],
       "source": "default",
       "createdAt": "2026-05-26T00:00:00.000Z",
       "usedCount": 0

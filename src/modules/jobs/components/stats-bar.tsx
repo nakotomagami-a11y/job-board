@@ -16,6 +16,7 @@ export function StatsBar({ jobs, filteredCount }: StatsBarProps) {
 
   return (
     <div className="stats">
+      <span className="badge" style={{ background: "rgba(167,139,250,0.15)", color: "var(--c-purple)", alignSelf: "center" }}>EU-only policy active</span>
       <div className="stat">
         <div className="stat-value">{filteredCount}</div>
         <div className="stat-label">

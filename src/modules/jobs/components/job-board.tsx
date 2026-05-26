@@ -14,6 +14,9 @@ import { CountrySearch } from "./country-search";
 import { CompanyTracker } from "./company-tracker";
 import { SearchConfig, type SearchParams } from "./search-config";
 import { PendingApplications } from "./pending-applications";
+import { AnswerBankPanel } from "./answer-bank-panel";
+import { BlocklistPanel } from "./blocklist-panel";
+import { BatchModal } from "./batch-modal";
 import { ROUTES, API } from "@lib/constants";
 import { salarySortValue } from "@lib/salary";
 
@@ -35,6 +38,9 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
   const [activeAction, setActiveAction] = useState<"audit" | "search" | null>(null);
   const [sortBy, setSortBy] = useState<"score" | "date" | "salary">("score");
   const [showSearchConfig, setShowSearchConfig] = useState(false);
+  const [showBank, setShowBank] = useState(false);
+  const [showBlocklist, setShowBlocklist] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
 
@@ -258,6 +264,48 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
 
   const isRunning = actionStatus === "running";
 
+  // Pick the highest-scoring un-applied / un-rejected job from the currently-
+  // filtered list and fire an auto-apply draft for it. Sequential lock on the
+  // server means at most one of these can be active.
+  const handleAutoApplyTop = async () => {
+    const candidate = [...filtered]
+      .filter((j) => !j.applied && !j.rejected)
+      .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))[0];
+    if (!candidate) {
+      setActionStatus("error");
+      setActionMsg("No un-applied job in the current view to draft.");
+      scheduleStatusClear(8000);
+      return;
+    }
+    setActiveAction("search");
+    setActionStatus("running");
+    setActionMsg(`Drafting AI apply for "${candidate.title}" @ ${candidate.company}...`);
+    try {
+      const res = await fetch(API.applyDraft, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: candidate.id }),
+        signal: newSignal(),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionStatus("done");
+        setActionMsg(`🤖 Draft ready for "${candidate.title}" — scroll up to review or answer questions.`);
+      } else if (res.status === 409) {
+        setActionStatus("error");
+        setActionMsg(data.error || "Another draft is already active — finish or cancel it first.");
+      } else {
+        setActionStatus("error");
+        setActionMsg(data.error || "Auto-apply failed");
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setActionStatus("error");
+      setActionMsg(e instanceof Error ? e.message : "Auto-apply failed");
+    }
+    scheduleStatusClear(15000);
+  };
+
   // Sort filtered results
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === "date") {
@@ -292,6 +340,9 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
 
       <PendingApplications />
 
+      {showBank && <AnswerBankPanel onClose={() => setShowBank(false)} />}
+      {showBlocklist && <BlocklistPanel onClose={() => setShowBlocklist(false)} />}
+
       {/* Actions row */}
       <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" }}>
         <button className="apply-btn" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
@@ -301,6 +352,26 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         <button className="filter-btn" onClick={handleLinkedInFeed} disabled={isRunning}
           style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1, borderColor: "rgba(10,102,194,0.4)", color: "#6ba3d6" }}>
           {activeAction === "search" && isRunning ? "⏳ Scanning..." : "🔗 LinkedIn Feed"}
+        </button>
+        <button className="filter-btn" onClick={handleAutoApplyTop} disabled={isRunning}
+          title="Drafts an AI apply for the highest-scoring un-applied job in the current filtered view."
+          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
+          🤖 AI Apply Top
+        </button>
+        <button className="filter-btn" onClick={() => setShowBatchModal(true)} disabled={isRunning}
+          title="Queue up to 10 jobs for sequential AI apply. Browsers open in parallel as each form is filled."
+          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
+          🚀 Queue Batch
+        </button>
+        <button className="filter-btn" onClick={() => setShowBank((s) => !s)}
+          title="View and edit your saved answers. Used by every future AI Apply."
+          style={{ padding: "8px 14px", fontSize: "0.82rem", borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
+          📖 {showBank ? "Hide" : "Open"} Answer Bank
+        </button>
+        <button className="filter-btn" onClick={() => setShowBlocklist((s) => !s)}
+          title="Manage permanently blocked companies"
+          style={{ padding: "8px 14px", fontSize: "0.82rem", borderColor: "rgba(248,113,113,0.35)", color: "#f87171" }}>
+          🚫 {showBlocklist ? "Hide" : "Blocklist"}
         </button>
         <button className="filter-btn" onClick={() => runCommand("audit")} disabled={isRunning}
           style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "audit" ? 0.4 : 1 }}>
@@ -444,6 +515,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
               index={i}
               onMarkApplied={onUpdateJob ? (id) => onUpdateJob(id, { applied: true, appliedDate: new Date().toISOString().slice(0, 10) }) : undefined}
               onReject={onUpdateJob ? (id) => onUpdateJob(id, { rejected: true }) : undefined}
+              onBlocked={onRefresh ? () => onRefresh() : undefined}
             />
           ))
         )}
@@ -459,6 +531,15 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           onSearch={handleConfiguredSearch}
           onClose={() => setShowSearchConfig(false)}
           isSearching={isRunning}
+        />
+      )}
+
+      {/* Batch queue modal */}
+      {showBatchModal && (
+        <BatchModal
+          jobs={sorted}
+          onClose={() => setShowBatchModal(false)}
+          onStarted={() => setShowBatchModal(false)}
         />
       )}
     </div>

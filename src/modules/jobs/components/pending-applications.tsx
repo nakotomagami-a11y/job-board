@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ApplyQueueEntry, UnansweredQuestion } from "@shared/types/apply";
 import type { FieldType } from "@lib/answer-bank";
+import { API } from "@lib/constants";
 
-// phase 2: video recording preview, notification on submit confirmation
+// phase 3: video recording preview, notification on submit confirmation
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -15,39 +16,71 @@ const FIELD_TYPES: FieldType[] = [
 
 type ActionState = "idle" | "busy";
 
+interface BatchState {
+  batch: {
+    batchId: string;
+    jobIds: string[];
+    currentIndex: number;
+    completedIds: string[];
+    status: string;
+    startedAt: string;
+    completedAt: string | null;
+  } | null;
+  isActive: boolean;
+}
+
 export function PendingApplications() {
   const [queue, setQueue] = useState<ApplyQueueEntry[]>([]);
+  const [batchState, setBatchState] = useState<BatchState | null>(null);
   const [actionState, setActionState] = useState<ActionState>("idle");
   const [msg, setMsg] = useState<{ text: string; kind: "ok" | "err" } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchQueue = useCallback(async () => {
     try {
-      const res = await fetch("/api/apply/queue");
+      const res = await fetch(API.applyQueue);
       if (res.ok) setQueue((await res.json()) as ApplyQueueEntry[]);
-    } catch {
-      // silent — poll will retry
-    }
+    } catch { /* silent — poll will retry */ }
+  }, []);
+
+  const fetchBatch = useCallback(async () => {
+    try {
+      const res = await fetch(API.applyBatch);
+      if (res.ok) setBatchState((await res.json()) as BatchState);
+    } catch { /* silent */ }
   }, []);
 
   useEffect(() => {
     fetchQueue();
-    pollRef.current = setInterval(fetchQueue, POLL_INTERVAL_MS);
+    fetchBatch();
+    pollRef.current = setInterval(() => {
+      fetchQueue();
+      fetchBatch();
+    }, POLL_INTERVAL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [fetchQueue]);
+  }, [fetchQueue, fetchBatch]);
 
   const pendingEntries = queue.filter((e) => e.status === "pending_review");
   const awaitingEntries = queue.filter((e) => e.status === "awaiting_answers");
+  const processingEntries = queue.filter((e) => e.status === "processing");
+  const isActiveBatch = batchState?.isActive === true;
 
-  if (pendingEntries.length === 0 && awaitingEntries.length === 0) return null;
+  if (
+    pendingEntries.length === 0 &&
+    awaitingEntries.length === 0 &&
+    processingEntries.length === 0 &&
+    !isActiveBatch
+  ) {
+    return null;
+  }
 
   const handleAction = async (draftId: string, action: "submit" | "cancel") => {
     setActionState("busy");
     setMsg(null);
     try {
-      const res = await fetch("/api/apply/confirm", {
+      const res = await fetch(API.applyConfirm, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId, action }),
@@ -61,6 +94,7 @@ export function PendingApplications() {
           kind: "ok",
         });
         await fetchQueue();
+        await fetchBatch();
       } else {
         setMsg({ text: data.error ?? "Action failed", kind: "err" });
       }
@@ -75,7 +109,7 @@ export function PendingApplications() {
     setActionState("busy");
     setMsg(null);
     try {
-      const res = await fetch("/api/apply/answer", {
+      const res = await fetch(API.applyAnswer, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId, answers }),
@@ -103,8 +137,92 @@ export function PendingApplications() {
     }
   };
 
+  const handleCancelBatch = async () => {
+    if (!confirm("Cancel the entire batch? All in-progress applications will be closed.")) return;
+    setActionState("busy");
+    setMsg(null);
+    try {
+      const res = await fetch(API.applyBatchCancel, { method: "POST" });
+      const data = (await res.json()) as { cancelledCount?: number; error?: string };
+      if (res.ok) {
+        setMsg({ text: `🛑 Batch cancelled. ${data.cancelledCount ?? 0} draft(s) closed.`, kind: "ok" });
+        await fetchQueue();
+        await fetchBatch();
+      } else {
+        setMsg({ text: data.error ?? "Cancel failed", kind: "err" });
+      }
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : "Cancel failed", kind: "err" });
+    } finally {
+      setActionState("idle");
+    }
+  };
+
+  const currentlyProcessing = processingEntries[0];
+  const batch = batchState?.batch;
+
   return (
     <div>
+      {/* ── Batch progress header ── */}
+      {isActiveBatch && batch && (
+        <section style={{
+          margin: "0 0 16px",
+          padding: "14px 20px",
+          background: "rgba(56,189,248,0.05)",
+          border: "1px solid rgba(56,189,248,0.2)",
+          borderRadius: "var(--radius)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--c-primary)" }}>
+              🚀 Batch in progress
+            </span>
+            <span style={{
+              background: "rgba(56,189,248,0.12)",
+              color: "var(--c-primary)",
+              borderRadius: "var(--radius-pill)",
+              padding: "1px 8px",
+              fontSize: "0.72rem",
+              fontWeight: 600,
+            }}>
+              {batch.completedIds.length} of {batch.jobIds.length} dispatched
+            </span>
+            {currentlyProcessing && (
+              <span style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                ⏳ Drafting: <strong style={{ color: "var(--text)" }}>{currentlyProcessing.jobTitle}</strong>
+              </span>
+            )}
+            <button
+              className="filter-btn"
+              disabled={actionState === "busy"}
+              onClick={handleCancelBatch}
+              style={{
+                marginLeft: "auto",
+                padding: "5px 12px",
+                fontSize: "0.75rem",
+                opacity: actionState === "busy" ? 0.5 : 1,
+                borderColor: "rgba(248,113,113,0.3)",
+                color: "#f87171",
+              }}
+            >
+              🛑 Cancel Batch
+            </button>
+          </div>
+          {msg && (
+            <div style={{
+              marginTop: 10,
+              padding: "6px 10px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "0.8rem",
+              background: msg.kind === "ok" ? "rgba(52,211,153,0.08)" : "rgba(248,113,113,0.08)",
+              color: msg.kind === "ok" ? "var(--c-secondary)" : "#f87171",
+              border: `1px solid ${msg.kind === "ok" ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
+            }}>
+              {msg.text}
+            </div>
+          )}
+        </section>
+      )}
+
       {awaitingEntries.length > 0 && (
         <section style={{
           margin: "0 0 24px",
@@ -132,7 +250,7 @@ export function PendingApplications() {
             </span>
           </div>
 
-          {msg && (
+          {msg && !isActiveBatch && (
             <div style={{
               marginBottom: 12,
               padding: "8px 12px",
@@ -187,7 +305,7 @@ export function PendingApplications() {
             </span>
           </div>
 
-          {msg && pendingEntries.length > 0 && (
+          {msg && pendingEntries.length > 0 && !isActiveBatch && (
             <div style={{
               marginBottom: 12,
               padding: "8px 12px",

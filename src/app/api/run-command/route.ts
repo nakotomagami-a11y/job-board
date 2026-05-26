@@ -12,6 +12,7 @@ import { rateLimit } from "@lib/rate-limit";
 import { readBoardStatsSync, lowYieldBoards } from "@lib/board-stats";
 import { hashQuery, readSearchHistorySync, pruneRecentlySearched, recordSearches } from "@lib/search-history";
 import type { Job } from "@shared/types/job";
+import { readBlocklist } from "@lib/company-blocklist";
 
 // Route only generates a prompt + writes a few small JSON files; should never
 // take more than a couple seconds.
@@ -118,10 +119,11 @@ interface BuiltSearch {
   boardsSearched: string[];
 }
 
-function buildSearchPrompt(config?: SearchConfig): BuiltSearch {
+async function buildSearchPrompt(config?: SearchConfig): Promise<BuiltSearch> {
   const existingJobs = getExistingJobs();
   const profile = getProfile();
   const rejectedHints = getRejectedHints();
+  const blocklist = await readBlocklist();
 
   // HARD constraints — every kept job must satisfy these (filter rejects, not preferences).
   const hardConstraints: string[] = [];
@@ -295,6 +297,16 @@ ${hardConstraints.length ? hardConstraints.map((c) => `- ${c}`).join("\n") : "- 
 SOFT PREFERENCES — bias toward but don't reject for missing:
 ${softConstraints.length ? softConstraints.map((c) => `- ${c}`).join("\n") : "- (none)"}
 
+HARD REGION FILTER - drop at extraction time:
+- Reject any listing whose location is in the US, Canada, LATAM, Asia, Australia, or Africa
+- Only keep listings where location is in EU/EEA (Germany, France, UK, Lithuania, Poland, etc.) OR truly worldwide-remote
+- "Remote within US" / "Remote (US/Canada)" / "Argentina Remote" / "LATAM Remote" all REJECT
+- Worldwide remote with no country restriction: KEEP
+
+HARD COMPANY BLOCKLIST - drop any listing from these companies at extraction time:
+${blocklist.companies.map((c) => `- ${c}`).join("\n") || "(no companies blocked)"}
+Match is case-insensitive on whole company name. "Revolut" blocks "Revolut Ltd" and "Revolut Bank" but does NOT block unrelated companies that contain those letters.
+
 PRECISION RUBRIC (the storage layer enforces this server-side — your job is to
 extract broadly and let it filter):
 1. URL is a direct apply page (not a search/listing index).
@@ -440,7 +452,7 @@ export async function POST(req: Request) {
       searchType = "linkedin-feed";
     } else if (command === "search") {
       const result = await withBatchLock(async () => {
-        const built = buildSearchPrompt(searchConfig);
+        const built = await buildSearchPrompt(searchConfig);
         // Persist the new batch state inside the lock so a concurrent caller
         // sees the updated `searchedBoards` before computing its own batch.
         await fs.writeFile(BATCH_PATH, JSON.stringify(built.batchState, null, 2));

@@ -17,6 +17,7 @@ data/user/
 # These are redundant given data/user/ above, but listed explicitly for clarity.
 data/user/apply-queue.json
 data/user/apply-pack.json
+data/user/apply-batch.json
 data/user/answer-bank.json
 data/user/browser-profile/
 data/user/apply-screenshots/
