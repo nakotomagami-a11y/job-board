@@ -85,7 +85,7 @@ export const BOARDS: JobBoard[] = [
   { name: "Duunitori Finland", url: "duunitori.fi", tier: 1, regions: ["Europe", "Nordic"],
     notes: "Finland's #1 developer community job board; English-language tech roles well-represented" },
   { name: "Platsbanken Sweden", url: "arbetsformedlingen.se/platsbanken", tier: 1, regions: ["Europe", "Nordic"],
-    notes: "Sweden's official national job board (Arbetsförmedlingen); search 'IT' or 'Software Developer' in English" },
+    notes: "Sweden's official national job board; use JobTech Dev public API: https://jobsearch.api.jobtechdev.se/search?q=react+typescript&limit=50 — no auth required, high yield" },
   { name: "Karriere.no", url: "karriere.no", tier: 1, regions: ["Europe", "Nordic"],
     notes: "Norwegian careers portal; tech section at karriere.no/stillinger/it" },
 
@@ -100,8 +100,7 @@ export const BOARDS: JobBoard[] = [
     notes: "Portugal + EU; tech focus; visa/relocation-friendly" },
 
   // EU dev community
-  { name: "Honeypot", url: "honeypot.io", tier: 1, regions: ["Europe"],
-    notes: "Berlin-based, dev-focused, English-friendly; acquired by New Work (XING parent) 2022 — verify still active" },
+  // Honeypot.io: ECONNREFUSED as of 2026-06-09 — appears decommissioned post-XING acquisition. Removed.
   { name: "WeAreDevelopers Jobs", url: "wearedevelopers.com/jobs", tier: 1, regions: ["Europe"],
     notes: "EU dev community board; strong in DACH + broader EU; has EU-remote filter" },
 
