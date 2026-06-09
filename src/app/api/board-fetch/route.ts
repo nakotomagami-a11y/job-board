@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { ATS_COMPANIES, atsListingsUrl, type AtsCompany } from "@shared/config/ats-companies";
-import { canonicalizeRole } from "@shared/config/role-aliases";
-import { rateLimit } from "@lib/rate-limit";
-import { sanitizeJobs } from "@lib/sanitize-job";
-import type { Job } from "@shared/types/job";
+import { ATS_COMPANIES, atsListingsUrl, type AtsCompany } from "@/config/ats-companies";
+import { canonicalizeRole } from "@/config/role-aliases";
+import { rateLimit } from "@lib/server-utils";
+import { sanitizeJobs } from "@lib/job-utils";
+import type { Job } from "@/types/job";
 
 export const maxDuration = 30;
 

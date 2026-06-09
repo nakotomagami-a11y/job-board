@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { extractText, getDocumentProxy } from "unpdf";
-import { rateLimit } from "@lib/rate-limit";
+import { rateLimit } from "@lib/server-utils";
 
 const USER_DIR = path.join(process.cwd(), "data", "user");
 

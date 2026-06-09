@@ -1,6 +1,6 @@
 "use client";
 
-import type { Job } from "@shared/types/job";
+import type { Job } from "@/types/job";
 
 interface StatsBarProps {
   jobs: Job[];
@@ -16,7 +16,7 @@ export function StatsBar({ jobs, filteredCount }: StatsBarProps) {
 
   return (
     <div className="stats">
-      <span className="badge" style={{ background: "rgba(167,139,250,0.15)", color: "var(--c-purple)", alignSelf: "center" }}>EU-only policy active</span>
+      <span className="badge bg-[rgba(167,139,250,0.15)] text-purple self-center">EU-only policy active</span>
       <div className="stat">
         <div className="stat-value">{filteredCount}</div>
         <div className="stat-label">

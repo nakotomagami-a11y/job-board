@@ -7,12 +7,12 @@ import {
   getBoardsForScope,
   sortBoardsByRegionPriority,
   type JobBoard,
-} from "@shared/config/priority-boards";
-import { rateLimit } from "@lib/rate-limit";
-import { readBoardStatsSync, lowYieldBoards } from "@lib/board-stats";
-import { hashQuery, readSearchHistorySync, pruneRecentlySearched, recordSearches } from "@lib/search-history";
-import type { Job } from "@shared/types/job";
-import { readBlocklist } from "@lib/company-blocklist";
+} from "@/config/priority-boards";
+import { rateLimit } from "@lib/server-utils";
+import { readBoardStatsSync, lowYieldBoards } from "@lib/data-access";
+import { hashQuery, readSearchHistorySync, pruneRecentlySearched, recordSearches } from "@lib/data-access";
+import type { Job } from "@/types/job";
+import { readBlocklist } from "@lib/data-access";
 
 // Route only generates a prompt + writes a few small JSON files; should never
 // take more than a couple seconds.
@@ -266,10 +266,10 @@ DELEGATE EACH BOARD TO HAIKU:
 
 Project: ${PROJECT_ROOT}
 Reference files (read for full context):
-- ${abs("docs/COMMANDS.md")} — JSON schema and 3-layer scrape chain (WebFetch → /api/scrape → Chrome MCP). NEVER skip a board on first failure.
+- ${abs("docs/COMMANDS.md")} — JSON schema and 3-layer scrape chain (WebFetch -> /api/scrape -> Chrome MCP). NEVER skip a board on first failure.
 - ${abs("data/user/profile.json")} — full candidate profile
 - ${abs("data/user/jobs.json")} — existing ${existingJobs.length} jobs (full dedup list)
-- ${abs("src/shared/config/priority-boards.ts")} — board URLs
+- ${abs("src/shared/config/priority-boards.ts")} — board URLs and tier structure
 
 CANDIDATE PROFILE (already extracted — apply during filtering):
 ${profileSummary}
@@ -277,19 +277,21 @@ ${profileSummary}
 REGION PRIORITY (the rotation already sorted by this — top entry first):
 ${regionPriority.length ? regionPriority.map((r, i) => `${i + 1}. ${r}`).join("\n") : "(none — search broadly)"}
 
+SOURCE PRIORITY: Prioritize Tier 1 (native EU country-specific boards) first. Skip global aggregators unless they appear in the rotation. The board list in priority-boards.ts is already sorted correctly — trust that order.
+
 THIS BATCH — search these ${boardsForThisBatch.length} board(s):
 ${boardsForThisBatch.map((b, i) => `${i + 1}. ${b}`).join("\n")}${searchedSoFar.length > 0 ? `\n\nBatch progress: ${searchedSoFar.length}/${allBoardsOrdered.length} done, ${remaining.length} remaining after this.` : ""}${skippedNote}
 
 FREE ATS FETCH (do this FIRST, before any agent search):
-- POST \`http://localhost:3000/api/board-fetch\` with no body to pull jobs from all known
-  Greenhouse / Lever / Ashby companies (defined in \`src/shared/config/ats-companies.ts\`).
+- POST \`http://localhost:3000/api/board-fetch\` with no body to pull jobs from EU-HQ'd companies
+  (defined in \`data/user/eu-ats-companies.json\` -- copy from \`data/user.example/eu-ats-companies.json\` on first run).
 - These come back as ready-to-store JSON — no agent tokens spent. Submit to \`/api/storage/jobs\`.
 - Then proceed to the agent-driven board scrape below for boards that don't have public APIs.
 
 LINKEDIN REGION FILTER:
-- When a global aggregator (LinkedIn, Indeed, Wellfound, Greenhouse) is in the batch,
-  pass the candidate's top-priority region as a location filter so the results match.
-- For LinkedIn specifically: ${regionPriority[0] === "Europe" ? "use `&location=European%20Union` (or per-country `&location=Lithuania` etc.) plus `&f_WT=2` for remote-allowed roles" : regionPriority[0] === "Remote" ? "use `&f_WT=2` (remote) without a specific location" : regionPriority[0] ? `use \`&location=${encodeURIComponent(regionPriority[0])}\`` : "search broadly without a location filter"}.
+- LinkedIn EU is Tier 5 — only search it if it appears in this batch.
+- When searching LinkedIn, use geoId=91000000 (EU) ONLY. Never search globally.
+- ${regionPriority[0] === "Europe" ? "Use `&location=European%20Union` (or per-country `&location=Lithuania` etc.) plus `&f_WT=2` for remote-allowed roles." : regionPriority[0] === "Remote" ? "Use `&f_WT=2` (remote) without a specific location." : regionPriority[0] ? `Use \`&location=${encodeURIComponent(regionPriority[0])}\`.` : "Search broadly without a location filter."}
 
 HARD FILTERS — every kept job MUST satisfy ALL of these:
 ${hardConstraints.length ? hardConstraints.map((c) => `- ${c}`).join("\n") : "- (no hard filters set — apply profile defaults)"}

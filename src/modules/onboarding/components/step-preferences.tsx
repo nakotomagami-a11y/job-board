@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { UserProfile } from "@shared/types/profile";
-import type { Region, Seniority } from "@shared/types/job";
-import { REGIONS, SENIORITIES } from "@shared/config/filters";
+import type { UserProfile } from "@/types/profile";
+import type { Region, Seniority } from "@/types/job";
+import { REGIONS, SENIORITIES } from "@/config/filters";
 
 interface CvAnalysis {
   suggestedRoles?: string[];
@@ -16,15 +16,6 @@ interface StepPreferencesProps {
   onNext: () => void;
   onBack: () => void;
 }
-
-const LABEL_STYLE = {
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  textTransform: "uppercase" as const,
-  letterSpacing: "0.06em",
-  color: "var(--text-dim)",
-  marginBottom: 8,
-};
 
 const FALLBACK_ROLES = [
   "Frontend Developer",
@@ -44,7 +35,6 @@ const FALLBACK_CATEGORIES = [
   "E-Commerce",
 ];
 
-// Broader suggestions for the suggestion panel
 const SUGGESTED_ROLES = [
   "Frontend Developer",
   "Frontend Engineer",
@@ -112,23 +102,20 @@ function EditableChipList({
     }
   };
 
-  // Suggestions not yet selected
   const availableSuggestions = suggestions.filter((s) => !items.includes(s));
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={LABEL_STYLE}>{label}</div>
+    <div className="mb-5">
+      <div className="section-label">{label}</div>
 
-      {/* Selected items */}
       {items.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+        <div className="flex flex-wrap gap-1.5 mb-2.5">
           {items.map((item) => (
             <button
               key={item}
               onClick={() => toggle(item)}
-              className="filter-btn active"
-              style={{ fontSize: "0.8rem", padding: "5px 12px" }}
-              title={`Click to remove`}
+              className="filter-btn active text-[0.8rem] px-3 py-[5px]"
+              title="Click to remove"
             >
               {item} ×
             </button>
@@ -136,32 +123,22 @@ function EditableChipList({
         </div>
       )}
 
-      {/* Suggestions */}
       {availableSuggestions.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
+        <div className="mb-2.5">
           <button
             onClick={() => setShowSuggestions(!showSuggestions)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-dim)",
-              fontSize: "0.72rem",
-              cursor: "pointer",
-              padding: 0,
-              fontFamily: "inherit",
-            }}
+            className="bg-transparent border-none text-text-dim text-[0.72rem] cursor-pointer p-0 font-[inherit]"
           >
             {showSuggestions ? "▾ Hide suggestions" : "▸ Show suggestions"}{" "}
             ({availableSuggestions.length})
           </button>
           {showSuggestions && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            <div className="flex flex-wrap gap-1.5 mt-2">
               {availableSuggestions.map((item) => (
                 <button
                   key={item}
                   onClick={() => toggle(item)}
-                  className="filter-btn"
-                  style={{ fontSize: "0.78rem", padding: "4px 10px" }}
+                  className="filter-btn text-[0.78rem] px-2.5 py-1"
                 >
                   + {item}
                 </button>
@@ -171,12 +148,10 @@ function EditableChipList({
         </div>
       )}
 
-      {/* Add custom */}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="flex gap-2">
         <input
           type="text"
-          className="search-input"
-          style={{ paddingLeft: 14, flex: 1 }}
+          className="search-input pl-3.5 flex-1"
           placeholder={placeholder}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -188,10 +163,9 @@ function EditableChipList({
           }}
         />
         <button
-          className="filter-btn"
+          className="filter-btn shrink-0"
           onClick={addCustom}
           disabled={!inputValue.trim()}
-          style={{ flexShrink: 0 }}
         >
           Add
         </button>
@@ -221,9 +195,9 @@ function MultiSelect({
   };
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={LABEL_STYLE}>{label}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div className="mb-5">
+      <div className="section-label">{label}</div>
+      <div className="flex flex-wrap gap-2">
         {options
           .filter((o) => o !== "All")
           .map((opt) => (
@@ -240,15 +214,6 @@ function MultiSelect({
   );
 }
 
-/**
- * Ordered region picker — array index 0 is the candidate's top priority.
- *
- * The search rotation in /api/run-command sorts boards by this order, and
- * score-job.ts grades regionMatch graduated by index (top 20pts → listed
- * 14pts → off-region remote 10pts). A regular MultiSelect can't express
- * "Europe before Remote" — this component exposes per-row up/down/remove
- * controls so the order is always user-driven.
- */
 function RegionPriorityList({
   label,
   options,
@@ -273,57 +238,40 @@ function RegionPriorityList({
   const add = (region: string) => onChange([...selected, region]);
   const remove = (region: string) => onChange(selected.filter((r) => r !== region));
 
-  const rowStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "8px 12px",
-    background: "var(--surface, rgba(255,255,255,0.03))",
-    border: "1px solid var(--border, rgba(255,255,255,0.08))",
-    borderRadius: 6,
-    marginBottom: 6,
-  } as const;
-
-  const iconBtnStyle = {
-    background: "transparent",
-    border: "none",
-    color: "var(--text-muted)",
-    cursor: "pointer",
-    padding: "4px 8px",
-    fontSize: "0.9rem",
-    lineHeight: 1,
-  } as const;
-
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={LABEL_STYLE}>{label}</div>
-      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 10 }}>
+    <div className="mb-5">
+      <div className="section-label">{label}</div>
+      <div className="text-[0.75rem] text-text-muted mb-2.5">
         Top entry is your highest priority — searches and scoring weight it first.
       </div>
 
       {selected.length === 0 ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: 10, fontStyle: "italic" }}>
+        <div className="text-[0.85rem] text-text-dim mb-2.5 italic">
           No regions selected. Pick one or more below — order matters.
         </div>
       ) : (
-        <div style={{ marginBottom: 12 }}>
+        <div className="mb-3">
           {selected.map((region, idx) => (
-            <div key={region} style={rowStyle}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-dim)", width: 24 }}>
+            <div
+              key={region}
+              className="flex items-center justify-between px-3 py-2 bg-surface border border-border rounded-md mb-1.5"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-[0.75rem] text-text-dim w-6">
                   {idx + 1}.
                 </span>
-                <span style={{ fontWeight: 500 }}>{region}</span>
+                <span className="font-medium">{region}</span>
                 {idx === 0 && (
-                  <span style={{ fontSize: "0.7rem", color: "var(--accent, #38bdf8)", marginLeft: 4 }}>
+                  <span className="text-[0.7rem] text-[var(--accent,#38bdf8)] ml-1">
                     top priority
                   </span>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 2 }}>
+              <div className="flex gap-[2px]">
                 <button
                   type="button"
-                  style={{ ...iconBtnStyle, opacity: idx === 0 ? 0.3 : 1 }}
+                  className="bg-transparent border-none text-text-muted cursor-pointer px-2 py-1 text-[0.9rem] leading-none"
+                  style={{ opacity: idx === 0 ? 0.3 : 1 }}
                   disabled={idx === 0}
                   onClick={() => move(idx, -1)}
                   aria-label={`Move ${region} up`}
@@ -333,7 +281,8 @@ function RegionPriorityList({
                 </button>
                 <button
                   type="button"
-                  style={{ ...iconBtnStyle, opacity: idx === selected.length - 1 ? 0.3 : 1 }}
+                  className="bg-transparent border-none text-text-muted cursor-pointer px-2 py-1 text-[0.9rem] leading-none"
+                  style={{ opacity: idx === selected.length - 1 ? 0.3 : 1 }}
                   disabled={idx === selected.length - 1}
                   onClick={() => move(idx, 1)}
                   aria-label={`Move ${region} down`}
@@ -343,7 +292,7 @@ function RegionPriorityList({
                 </button>
                 <button
                   type="button"
-                  style={iconBtnStyle}
+                  className="bg-transparent border-none text-text-muted cursor-pointer px-2 py-1 text-[0.9rem] leading-none"
                   onClick={() => remove(region)}
                   aria-label={`Remove ${region}`}
                   title="Remove"
@@ -357,7 +306,7 @@ function RegionPriorityList({
       )}
 
       {available.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="flex flex-wrap gap-2">
           {available.map((region) => (
             <button
               key={region}
@@ -380,7 +329,6 @@ export function StepPreferences({
   onNext,
   onBack,
 }: StepPreferencesProps) {
-  // Load Claude's suggestions from analysis file
   const [claudeAnalysis, setClaudeAnalysis] = useState<CvAnalysis>({});
 
   useEffect(() => {
@@ -394,8 +342,6 @@ export function StepPreferences({
     return () => ctrl.abort();
   }, []);
 
-  // Normalize category names from cv-analysis to the canonical list used
-  // by the rest of the app so suggestions don't create orphan filter values.
   const normalizeCategory = (c: string): string => {
     const map: Record<string, string> = {
       "web3 / blockchain": "Crypto / Web3",
@@ -419,7 +365,6 @@ export function StepPreferences({
     return map[c.toLowerCase()] ?? c;
   };
 
-  // Use Claude's suggestions first, then fall back to hardcoded
   const roleSuggestions = claudeAnalysis.suggestedRoles?.length
     ? [...new Set([...claudeAnalysis.suggestedRoles, ...FALLBACK_ROLES])]
     : buildRoleSuggestions(draft.skills);
@@ -433,17 +378,17 @@ export function StepPreferences({
 
   return (
     <div>
-      <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 8 }}>
+      <h2 className="text-[1.3rem] font-bold mb-2">
         Your Preferences
       </h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: 24, fontSize: "0.9rem" }}>
+      <p className="text-text-muted mb-6 text-[0.9rem]">
         Tell us what you&apos;re looking for. This helps score and rank jobs for you.
       </p>
 
       {/* Remote preference */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={LABEL_STYLE}>Work Style</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div className="mb-5">
+        <div className="section-label">Work Style</div>
+        <div className="flex flex-wrap gap-2">
           {(["remote", "hybrid", "onsite", "any"] as const).map((opt) => (
             <button
               key={opt}
@@ -458,7 +403,6 @@ export function StepPreferences({
         </div>
       </div>
 
-      {/* Regions — ordered priority list. Top entry drives the search rotation. */}
       <RegionPriorityList
         label="Preferred Regions (priority order)"
         options={REGIONS}
@@ -466,7 +410,6 @@ export function StepPreferences({
         onChange={(val) => updateDraft({ preferredRegions: val as Region[] })}
       />
 
-      {/* Seniority — keep as simple multi-select */}
       <MultiSelect
         label="Seniority Level"
         options={SENIORITIES}
@@ -474,7 +417,6 @@ export function StepPreferences({
         onChange={(val) => updateDraft({ preferredSeniority: val as Seniority[] })}
       />
 
-      {/* Role Types — dynamic with suggestions from CV */}
       <EditableChipList
         label="Job Titles / Role Types you're looking for"
         items={draft.preferredRoles}
@@ -483,7 +425,6 @@ export function StepPreferences({
         placeholder="Add a role (e.g. React Developer, UI Engineer...)"
       />
 
-      {/* Categories — dynamic with suggestions from CV */}
       <EditableChipList
         label="Industries / Categories"
         items={draft.preferredCategories}
@@ -493,13 +434,12 @@ export function StepPreferences({
       />
 
       {/* Salary range */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={LABEL_STYLE}>Salary Range (USD/year, optional)</div>
-        <div style={{ display: "flex", gap: 12 }}>
+      <div className="mb-6">
+        <div className="section-label">Salary Range (USD/year, optional)</div>
+        <div className="flex gap-3">
           <input
             type="number"
-            className="search-input"
-            style={{ paddingLeft: 14, flex: 1 }}
+            className="search-input pl-3.5 flex-1"
             placeholder="Min (e.g. 80000)"
             value={draft.salaryRange?.min || ""}
             onChange={(e) =>
@@ -514,8 +454,7 @@ export function StepPreferences({
           />
           <input
             type="number"
-            className="search-input"
-            style={{ paddingLeft: 14, flex: 1 }}
+            className="search-input pl-3.5 flex-1"
             placeholder="Max (e.g. 200000)"
             value={draft.salaryRange?.max || ""}
             onChange={(e) =>
@@ -532,14 +471,13 @@ export function StepPreferences({
       </div>
 
       {/* Navigation */}
-      <div style={{ display: "flex", gap: 12 }}>
+      <div className="flex gap-3">
         <button className="filter-btn" onClick={onBack}>
           ← Back
         </button>
         <button
-          className="apply-btn"
+          className="apply-btn flex-1 justify-center"
           onClick={onNext}
-          style={{ flex: 1, justifyContent: "center" }}
         >
           Continue →
         </button>
@@ -554,10 +492,8 @@ function buildRoleSuggestions(skills: string[]): string[] {
   const suggestions = new Set<string>();
   const skillsLower = skills.map((s) => s.toLowerCase());
 
-  // Always include base suggestions
   SUGGESTED_ROLES.forEach((r) => suggestions.add(r));
 
-  // Add specific roles based on detected skills
   if (skillsLower.some((s) => ["react native", "ios", "android", "flutter", "kotlin", "swift"].includes(s))) {
     suggestions.add("Mobile Developer");
     suggestions.add("React Native Developer");
@@ -582,12 +518,10 @@ function buildRoleSuggestions(skills: string[]): string[] {
   if (skillsLower.some((s) => ["node.js", "express", "postgresql", "mongodb"].includes(s))) {
     suggestions.add("Full-Stack Developer");
   }
-  // AI-adjacent tooling → suggest GenAI roles
   if (skillsLower.some((s) => ["anthropic claude", "chatgpt", "openai", "langchain", "llm"].includes(s))) {
     suggestions.add("GenAI Engineer");
     suggestions.add("AI Frontend Engineer");
   }
-  // Always show generalist roles for experienced engineers
   suggestions.add("Product Engineer");
   suggestions.add("Founding Engineer");
   suggestions.add("Software Engineer");
@@ -600,10 +534,8 @@ function buildCategorySuggestions(skills: string[], cvText?: string): string[] {
   const skillsLower = skills.map((s) => s.toLowerCase());
   const textLower = (cvText || "").toLowerCase();
 
-  // Always include base suggestions
   SUGGESTED_CATEGORIES.forEach((c) => suggestions.add(c));
 
-  // Add specific categories based on CV content
   if (skillsLower.some((s) => ["solidity", "web3", "blockchain", "defi"].includes(s)) || textLower.includes("web3") || textLower.includes("blockchain")) {
     suggestions.add("Crypto / Web3");
     suggestions.add("DeFi");

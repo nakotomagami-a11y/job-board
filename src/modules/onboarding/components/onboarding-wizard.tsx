@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useProfile } from "@shared/providers/profile-provider";
-import type { UserProfile } from "@shared/types/profile";
-import { DEFAULT_PROFILE } from "@shared/types/profile";
+import { useProfile } from "@/providers/profile-provider";
+import type { UserProfile } from "@/types/profile";
+import { DEFAULT_PROFILE } from "@/types/profile";
 import { ROUTES } from "@lib/constants";
 import { StepWelcome } from "./step-welcome";
 import { StepCVUpload } from "./step-cv-upload";
@@ -36,29 +36,23 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: 640 }}>
-      <div className="header" style={{ paddingBottom: 16 }}>
-        <h1 style={{ fontSize: "2rem" }}>JobHunt</h1>
-        <p style={{ fontSize: "0.9rem" }}>Set up your profile</p>
+    <div className="container max-w-[640px]">
+      <div className="header pb-4">
+        <h1 className="text-[2rem]">JobHunt</h1>
+        <p className="text-[0.9rem]">Set up your profile</p>
       </div>
 
       {/* Progress */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 32 }}>
+      <div className="flex gap-1 mb-8">
         {STEPS.map((label, i) => (
           <div
             key={label}
-            style={{
-              flex: 1,
-              height: 3,
-              borderRadius: 2,
-              background: i <= step ? "var(--c-primary)" : "var(--border)",
-              transition: "background 0.3s",
-            }}
+            className="flex-1 h-[3px] rounded-sm transition-colors duration-300"
+            style={{ background: i <= step ? "var(--c-primary)" : "var(--border)" }}
           />
         ))}
       </div>
 
-      {/* Step content */}
       {step === 0 && <StepWelcome onNext={next} />}
       {step === 1 && (
         <StepCVUpload draft={draft} updateDraft={updateDraft} onNext={next} onBack={back} />
@@ -68,16 +62,7 @@ export function OnboardingWizard() {
       )}
       {step === 3 && <StepComplete draft={draft} onFinish={finish} onBack={back} />}
 
-      {/* Step indicator */}
-      <div
-        style={{
-          textAlign: "center",
-          color: "var(--text-dim)",
-          fontSize: "0.75rem",
-          marginTop: 24,
-          paddingBottom: 32,
-        }}
-      >
+      <div className="text-center text-text-dim text-[0.75rem] mt-6 pb-8">
         Step {step + 1} of {STEPS.length} · {STEPS[step]}
       </div>
     </div>

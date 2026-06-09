@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useProfile } from "@shared/providers/profile-provider";
+import { useProfile } from "@/providers/profile-provider";
 import { ROUTES } from "@lib/constants";
 
 export default function Home() {
@@ -19,15 +19,7 @@ export default function Home() {
   }, [profile, loading, router]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        color: "var(--text-dim)",
-      }}
-    >
+    <div className="flex items-center justify-center min-h-screen text-text-dim">
       Loading...
     </div>
   );

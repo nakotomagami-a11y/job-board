@@ -1,9 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Job } from "@shared/types/job";
+import type { Job } from "@/types/job";
 import { API } from "@lib/constants";
-import { queryKeys } from "@shared/query-keys";
+import { queryKeys } from "@lib/query-keys";
 
 async function fetchJobs(): Promise<Job[]> {
   const res = await fetch(API.jobs);

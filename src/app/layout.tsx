@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { ProfileProvider } from "@shared/providers/profile-provider";
-import { QueryProvider } from "@shared/providers/query-provider";
+import { ProfileProvider } from "@/providers/profile-provider";
+import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {

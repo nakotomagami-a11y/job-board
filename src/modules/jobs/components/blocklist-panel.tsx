@@ -89,89 +89,59 @@ export function BlocklistPanel({ onClose }: BlocklistPanelProps) {
 
   if (!data) {
     return (
-      <div style={{
-        padding: 20, background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)",
-        borderRadius: "var(--radius)", marginBottom: 20, textAlign: "center", fontSize: "0.85rem", color: "var(--text-dim)",
-      }}>
+      <div className="p-5 bg-[rgba(248,113,113,0.06)] border border-[rgba(248,113,113,0.25)] rounded-card mb-5 text-center text-[0.85rem] text-text-dim">
         Loading blocklist...
       </div>
     );
   }
 
   return (
-    <section style={{
-      margin: "0 0 24px", padding: "16px 20px",
-      background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.25)",
-      borderRadius: "var(--radius)",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "#f87171" }}>
+    <section className="mb-6 px-5 py-4 bg-[rgba(248,113,113,0.06)] border border-[rgba(248,113,113,0.25)] rounded-card">
+      <div className="flex items-center gap-2.5 mb-3.5 flex-wrap">
+        <span className="text-[0.95rem] font-bold text-danger">
           Blocked Companies
         </span>
-        <span style={{
-          background: "rgba(248,113,113,0.15)", color: "#f87171",
-          borderRadius: "var(--radius-pill)", padding: "1px 8px",
-          fontSize: "0.72rem", fontWeight: 600,
-        }}>
+        <span className="bg-[rgba(248,113,113,0.15)] text-danger rounded-pill px-2 py-[1px] text-[0.72rem] font-semibold">
           {data.count} blocked
         </span>
         {data.updatedAt && (
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--text-dim)" }}>
+          <span className="ml-auto text-[0.7rem] text-text-dim">
             Updated {new Date(data.updatedAt).toLocaleString()}
           </span>
         )}
-        <button className="filter-btn" onClick={onClose} style={{ fontSize: "0.72rem", padding: "4px 10px" }}>
+        <button className="filter-btn text-[0.72rem] px-2.5 py-1" onClick={onClose}>
           Close
         </button>
       </div>
 
       {addMsg && (
-        <div style={{
-          marginBottom: 12, padding: "8px 12px", borderRadius: "var(--radius-sm)", fontSize: "0.82rem",
-          background: addState === "err" ? "rgba(248,113,113,0.08)" : "rgba(52,211,153,0.08)",
-          color: addState === "err" ? "#f87171" : "var(--c-secondary)",
-          border: `1px solid ${addState === "err" ? "rgba(248,113,113,0.2)" : "rgba(52,211,153,0.2)"}`,
-        }}>
+        <div className={`mb-3 px-3 py-2 rounded-sm text-[0.82rem] border ${addState === "err" ? "bg-[rgba(248,113,113,0.08)] text-danger border-[rgba(248,113,113,0.2)]" : "bg-[rgba(52,211,153,0.08)] text-secondary border-[rgba(52,211,153,0.2)]"}`}>
           {addMsg}
         </div>
       )}
 
       {data.companies.length === 0 ? (
-        <div style={{
-          padding: "20px 0", textAlign: "center", fontSize: "0.82rem", color: "var(--text-dim)",
-        }}>
+        <div className="py-5 text-center text-[0.82rem] text-text-dim">
           No companies blocked yet. Add a company below to prevent its jobs from appearing.
         </div>
       ) : (
-        <ul style={{ listStyle: "none", margin: "0 0 16px", padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <ul className="list-none m-0 mb-4 p-0 flex flex-col gap-1.5">
           {data.companies.map((company) => (
-            <li key={company} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "8px 12px", borderRadius: "var(--radius-sm)",
-              background: "var(--surface)", border: "1px solid var(--border)",
-            }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text)" }}>{company}</span>
+            <li key={company} className="flex items-center justify-between px-3 py-2 rounded-sm bg-surface border border-border">
+              <span className="text-[0.85rem] text-text-base">{company}</span>
               {confirmRemove === company ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-dim)" }}>Remove?</span>
+                <div className="flex gap-1.5 items-center">
+                  <span className="text-[0.72rem] text-text-dim">Remove?</span>
                   <button
                     onClick={() => handleRemove(company)}
                     disabled={removeState === "loading"}
-                    style={{
-                      fontSize: "0.72rem", padding: "3px 8px", cursor: "pointer",
-                      background: "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.35)",
-                      color: "#f87171", borderRadius: "var(--radius-sm)",
-                    }}
+                    className="text-[0.72rem] px-2 py-[3px] cursor-pointer bg-[rgba(248,113,113,0.15)] border border-[rgba(248,113,113,0.35)] text-danger rounded-sm"
                   >
                     Yes, remove
                   </button>
                   <button
                     onClick={() => setConfirmRemove(null)}
-                    style={{
-                      fontSize: "0.72rem", padding: "3px 8px", cursor: "pointer",
-                      background: "var(--surface)", border: "1px solid var(--border)",
-                      color: "var(--text-dim)", borderRadius: "var(--radius-sm)",
-                    }}
+                    className="text-[0.72rem] px-2 py-[3px] cursor-pointer bg-surface border border-border text-text-dim rounded-sm"
                   >
                     Cancel
                   </button>
@@ -180,10 +150,7 @@ export function BlocklistPanel({ onClose }: BlocklistPanelProps) {
                 <button
                   onClick={() => setConfirmRemove(company)}
                   title={`Remove ${company} from blocklist`}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "var(--text-dim)", fontSize: "1rem", lineHeight: 1, padding: "2px 6px",
-                  }}
+                  className="bg-transparent border-none cursor-pointer text-text-dim text-base leading-none px-1.5 py-[2px]"
                 >
                   x
                 </button>
@@ -193,35 +160,24 @@ export function BlocklistPanel({ onClose }: BlocklistPanelProps) {
         </ul>
       )}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="flex gap-2 items-center">
         <input
           type="text"
           value={addInput}
           onChange={(e) => setAddInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           placeholder="Company name..."
-          style={{
-            flex: 1, padding: "7px 10px", fontSize: "0.85rem",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)", color: "var(--text)",
-          }}
+          className="flex-1 px-2.5 py-[7px] text-[0.85rem] bg-surface border border-border rounded-sm text-text-base"
         />
         <button
-          className="apply-btn"
+          className={`apply-btn px-3.5 py-[7px] text-[0.82rem] bg-[rgba(248,113,113,0.12)] border border-[rgba(248,113,113,0.3)] text-danger ${addState === "loading" || !addInput.trim() ? "opacity-50" : ""}`}
           onClick={handleAdd}
           disabled={addState === "loading" || !addInput.trim()}
-          style={{
-            padding: "7px 14px", fontSize: "0.82rem",
-            background: "rgba(248,113,113,0.12)",
-            border: "1px solid rgba(248,113,113,0.3)",
-            color: "#f87171",
-            opacity: addState === "loading" || !addInput.trim() ? 0.5 : 1,
-          }}
         >
           {addState === "loading" ? "..." : "Block"}
         </button>
       </div>
-      <div style={{ marginTop: 8, fontSize: "0.7rem", color: "var(--text-dim)" }}>
+      <div className="mt-2 text-[0.7rem] text-text-dim">
         Adding a company blocks all current and future jobs from it. Removal does not un-reject past jobs.
       </div>
     </section>

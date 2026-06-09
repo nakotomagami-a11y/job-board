@@ -3,32 +3,24 @@
 import { JobBoard } from "@modules/jobs/components/job-board";
 import { useJobStore } from "@modules/jobs/hooks/use-job-store";
 
-const centeredScreen: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "100vh",
-  color: "var(--text-dim)",
-  textAlign: "center",
-  padding: "0 24px",
-};
-
 export default function DashboardPage() {
   const { jobs, loading, error, updateJob, refetch } = useJobStore();
 
   if (loading) {
-    return <div style={centeredScreen}>Loading jobs...</div>;
+    return (
+      <div className="flex flex-col gap-3 items-center justify-center min-h-screen text-text-dim text-center px-6">
+        Loading jobs...
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div style={centeredScreen}>
-        <div style={{ color: "#f87171", fontSize: "0.95rem" }}>
+      <div className="flex flex-col gap-3 items-center justify-center min-h-screen text-text-dim text-center px-6">
+        <div className="text-danger text-[0.95rem]">
           Couldn&apos;t load jobs
         </div>
-        <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", maxWidth: 420 }}>
+        <div className="text-[0.78rem] text-text-dim max-w-[420px]">
           {error instanceof Error ? error.message : "Unknown error"}
         </div>
         <button className="filter-btn" onClick={() => refetch()}>

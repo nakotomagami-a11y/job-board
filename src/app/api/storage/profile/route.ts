@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import type { UserProfile } from "@shared/types/profile";
+import type { UserProfile } from "@/types/profile";
 
 const PROFILE_PATH = path.join(process.cwd(), "data", "user", "profile.json");
 

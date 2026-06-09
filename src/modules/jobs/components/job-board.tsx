@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Job } from "@shared/types/job";
-import { useProfile } from "@shared/providers/profile-provider";
+import type { Job } from "@/types/job";
+import { useProfile } from "@/providers/profile-provider";
 import { useFilters } from "../hooks/use-filters";
 import { useJobScoring } from "../hooks/use-job-scoring";
 import { SearchBar } from "./search-bar";
@@ -13,12 +13,9 @@ import { SourcesPanel } from "./sources-panel";
 import { CountrySearch } from "./country-search";
 import { CompanyTracker } from "./company-tracker";
 import { SearchConfig, type SearchParams } from "./search-config";
-import { PendingApplications } from "./pending-applications";
-import { AnswerBankPanel } from "./answer-bank-panel";
 import { BlocklistPanel } from "./blocklist-panel";
-import { BatchModal } from "./batch-modal";
 import { ROUTES, API } from "@lib/constants";
-import { salarySortValue } from "@lib/salary";
+import { salarySortValue } from "@lib/job-utils";
 
 interface JobBoardProps {
   jobs: Job[];
@@ -38,13 +35,10 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
   const [activeAction, setActiveAction] = useState<"audit" | "search" | null>(null);
   const [sortBy, setSortBy] = useState<"score" | "date" | "salary">("score");
   const [showSearchConfig, setShowSearchConfig] = useState(false);
-  const [showBank, setShowBank] = useState(false);
   const [showBlocklist, setShowBlocklist] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
 
-  // Abort in-flight fetches on unmount so we don't write to state after teardown.
   const abortRef = useRef<AbortController | null>(null);
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -127,7 +121,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       if (res.ok) {
         setActionStatus("done");
         setActionMsg(data.message);
-        // Refresh the job list
         if (onRefresh) await onRefresh();
       } else {
         setActionStatus("error");
@@ -219,9 +212,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
     setActionMsg("Resetting batch for a fresh sweep...");
 
     try {
-      // Wipe any leftover batch progress so the new search hits every board in
-      // the rotation, not just the ones that weren't searched last time.
-      // The "🔄 Reset Batch" button stays available for manual mid-sweep resets.
       await fetch(API.runCommand, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -264,49 +254,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
 
   const isRunning = actionStatus === "running";
 
-  // Pick the highest-scoring un-applied / un-rejected job from the currently-
-  // filtered list and fire an auto-apply draft for it. Sequential lock on the
-  // server means at most one of these can be active.
-  const handleAutoApplyTop = async () => {
-    const candidate = [...filtered]
-      .filter((j) => !j.applied && !j.rejected)
-      .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))[0];
-    if (!candidate) {
-      setActionStatus("error");
-      setActionMsg("No un-applied job in the current view to draft.");
-      scheduleStatusClear(8000);
-      return;
-    }
-    setActiveAction("search");
-    setActionStatus("running");
-    setActionMsg(`Drafting AI apply for "${candidate.title}" @ ${candidate.company}...`);
-    try {
-      const res = await fetch(API.applyDraft, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: candidate.id }),
-        signal: newSignal(),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setActionStatus("done");
-        setActionMsg(`🤖 Draft ready for "${candidate.title}" — scroll up to review or answer questions.`);
-      } else if (res.status === 409) {
-        setActionStatus("error");
-        setActionMsg(data.error || "Another draft is already active — finish or cancel it first.");
-      } else {
-        setActionStatus("error");
-        setActionMsg(data.error || "Auto-apply failed");
-      }
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setActionStatus("error");
-      setActionMsg(e instanceof Error ? e.message : "Auto-apply failed");
-    }
-    scheduleStatusClear(15000);
-  };
-
-  // Sort filtered results
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === "date") {
       return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
@@ -314,7 +261,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
     if (sortBy === "salary") {
       return salarySortValue(b.salary) - salarySortValue(a.salary);
     }
-    // Default: score
     return (b.matchScore ?? 0) - (a.matchScore ?? 0);
   });
 
@@ -330,7 +276,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         <span className="meta">
           {strongMatches > 0 ? `${strongMatches} strong matches · ` : ""}
           {jobs.length} total positions ·{" "}
-          <a href={ROUTES.settings} style={{ color: "var(--c-primary)", textDecoration: "none" }}>
+          <a href={ROUTES.settings} className="text-primary no-underline">
             Settings
           </a>
         </span>
@@ -338,50 +284,33 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
 
       <StatsBar jobs={jobs} filteredCount={filtered.length} />
 
-      <PendingApplications />
-
-      {showBank && <AnswerBankPanel onClose={() => setShowBank(false)} />}
       {showBlocklist && <BlocklistPanel onClose={() => setShowBlocklist(false)} />}
 
       {/* Actions row */}
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" }}>
-        <button className="apply-btn" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
-          style={{ padding: "8px 18px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
+      <div className="flex gap-2 justify-center mb-2 flex-wrap">
+        <button className="apply-btn px-4.5 py-2 text-[0.82rem]" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
+          style={{ opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
           {activeAction === "search" && isRunning ? "⏳ Searching..." : "🔍 Find New Jobs"}
         </button>
-        <button className="filter-btn" onClick={handleLinkedInFeed} disabled={isRunning}
-          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "search" ? 0.4 : 1, borderColor: "rgba(10,102,194,0.4)", color: "#6ba3d6" }}>
+        <button className="filter-btn px-3.5 py-2 text-[0.82rem] border-[rgba(10,102,194,0.4)] text-[#6ba3d6]" onClick={handleLinkedInFeed} disabled={isRunning}
+          style={{ opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
           {activeAction === "search" && isRunning ? "⏳ Scanning..." : "🔗 LinkedIn Feed"}
         </button>
-        <button className="filter-btn" onClick={handleAutoApplyTop} disabled={isRunning}
-          title="Drafts an AI apply for the highest-scoring un-applied job in the current filtered view."
-          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
-          🤖 AI Apply Top
-        </button>
-        <button className="filter-btn" onClick={() => setShowBatchModal(true)} disabled={isRunning}
-          title="Queue up to 10 jobs for sequential AI apply. Browsers open in parallel as each form is filled."
-          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
-          🚀 Queue Batch
-        </button>
-        <button className="filter-btn" onClick={() => setShowBank((s) => !s)}
-          title="View and edit your saved answers. Used by every future AI Apply."
-          style={{ padding: "8px 14px", fontSize: "0.82rem", borderColor: "rgba(139,92,246,0.4)", color: "#a78bfa" }}>
-          📖 {showBank ? "Hide" : "Open"} Answer Bank
-        </button>
-        <button className="filter-btn" onClick={() => setShowBlocklist((s) => !s)}
-          title="Manage permanently blocked companies"
-          style={{ padding: "8px 14px", fontSize: "0.82rem", borderColor: "rgba(248,113,113,0.35)", color: "#f87171" }}>
+        <button className="filter-btn px-3.5 py-2 text-[0.82rem] border-[rgba(248,113,113,0.35)] text-danger"
+          onClick={() => setShowBlocklist((s) => !s)}
+          title="Manage permanently blocked companies">
           🚫 {showBlocklist ? "Hide" : "Blocklist"}
         </button>
-        <button className="filter-btn" onClick={() => runCommand("audit")} disabled={isRunning}
-          style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning && activeAction !== "audit" ? 0.4 : 1 }}>
+        <button className="filter-btn px-3.5 py-2 text-[0.82rem]" onClick={() => runCommand("audit")} disabled={isRunning}
+          style={{ opacity: isRunning && activeAction !== "audit" ? 0.4 : 1 }}>
           {activeAction === "audit" && isRunning ? "⏳ Auditing..." : "🧹 Audit"}
         </button>
-        <button className="filter-btn" onClick={() => { if (confirm("Remove all saved jobs?")) runCommand("clear-all"); }}
-          disabled={isRunning} style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1, borderColor: "rgba(248,113,113,0.3)", color: "#f87171" }}>
+        <button className="filter-btn px-3.5 py-2 text-[0.82rem] border-[rgba(248,113,113,0.3)] text-danger"
+          onClick={() => { if (confirm("Remove all saved jobs?")) runCommand("clear-all"); }}
+          disabled={isRunning} style={{ opacity: isRunning ? 0.4 : 1 }}>
           🗑 Clear
         </button>
-        <button className="filter-btn" onClick={async () => {
+        <button className="filter-btn px-3.5 py-2 text-[0.82rem]" onClick={async () => {
           try {
             await fetch(API.runCommand, {
               method: "POST",
@@ -397,13 +326,13 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           setActionStatus("done");
           scheduleStatusClear(8000);
         }}
-          disabled={isRunning} style={{ padding: "8px 14px", fontSize: "0.82rem", opacity: isRunning ? 0.4 : 1 }}>
+          disabled={isRunning} style={{ opacity: isRunning ? 0.4 : 1 }}>
           🔄 Reset Batch
         </button>
       </div>
 
       {/* Expandable search options */}
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 12, flexWrap: "wrap" }}>
+      <div className="flex gap-2 justify-center mb-3 flex-wrap">
         <CountrySearch onSearch={handleCountrySearch} isSearching={isRunning} />
         <CompanyTracker onSearch={handleCompanySearch} isSearching={isRunning} />
         <SourcesPanel jobs={jobs} />
@@ -411,54 +340,45 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
 
       {/* Action status */}
       {actionMsg && (
-        <div style={{
-          textAlign: "center", marginBottom: 12, padding: "8px 14px", borderRadius: 10, fontSize: "0.8rem",
-          background: actionStatus === "done" ? "rgba(52,211,153,0.08)" : actionStatus === "error" ? "rgba(248,113,113,0.08)" : "rgba(56,189,248,0.08)",
-          color: actionStatus === "done" ? "var(--c-secondary)" : actionStatus === "error" ? "#f87171" : "var(--c-primary)",
-          border: `1px solid ${actionStatus === "done" ? "rgba(52,211,153,0.2)" : actionStatus === "error" ? "rgba(248,113,113,0.2)" : "rgba(56,189,248,0.2)"}`,
-        }}>
+        <div className={`text-center mb-3 px-3.5 py-2 rounded-[10px] text-[0.8rem] border ${
+          actionStatus === "done"
+            ? "bg-[rgba(52,211,153,0.08)] text-secondary border-[rgba(52,211,153,0.2)]"
+            : actionStatus === "error"
+              ? "bg-[rgba(248,113,113,0.08)] text-danger border-[rgba(248,113,113,0.2)]"
+              : "bg-[rgba(56,189,248,0.08)] text-primary border-[rgba(56,189,248,0.2)]"
+        }`}>
           {actionMsg}
         </div>
       )}
 
       {/* Generated prompt display */}
       {generatedPrompt && (
-        <div style={{
-          marginBottom: 16, padding: "16px", borderRadius: 12,
-          background: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.15)",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--c-primary)" }}>
+        <div className="mb-4 p-4 rounded-xl bg-[rgba(56,189,248,0.05)] border border-[rgba(56,189,248,0.15)]">
+          <div className="flex justify-between items-center mb-2.5">
+            <span className="text-[0.85rem] font-semibold text-primary">
               📋 Search prompt generated
             </span>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(generatedPrompt);
                   setPromptCopied(true);
                   setTimeout(() => setPromptCopied(false), 2000);
                 }}
-                className="filter-btn active"
-                style={{ fontSize: "0.72rem", padding: "4px 10px" }}>
+                className="filter-btn active text-[0.72rem] px-2.5 py-1">
                 {promptCopied ? "✓ Copied!" : "📋 Copy Prompt"}
               </button>
               <button
                 onClick={() => setGeneratedPrompt(null)}
-                className="filter-btn"
-                style={{ fontSize: "0.72rem", padding: "4px 10px" }}>
+                className="filter-btn text-[0.72rem] px-2.5 py-1">
                 ✕ Close
               </button>
             </div>
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginBottom: 8 }}>
-            Tell Claude Code: <strong style={{ color: "var(--c-secondary)" }}>&quot;Run the job search&quot;</strong> — or copy and paste this prompt.
+          <div className="text-[0.75rem] text-text-dim mb-2">
+            Tell Claude Code: <strong className="text-secondary">&quot;Run the job search&quot;</strong> — or copy and paste this prompt.
           </div>
-          <pre style={{
-            background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 12,
-            fontSize: "0.68rem", color: "var(--text-muted)", overflow: "auto",
-            maxHeight: 200, whiteSpace: "pre-wrap", wordBreak: "break-word",
-            border: "1px solid rgba(255,255,255,0.05)",
-          }}>
+          <pre className="bg-[rgba(0,0,0,0.3)] rounded-lg p-3 text-[0.68rem] text-text-muted overflow-auto max-h-[200px] whitespace-pre-wrap break-words border border-[rgba(255,255,255,0.05)]">
             {generatedPrompt}
           </pre>
         </div>
@@ -479,16 +399,15 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       />
 
       {/* Sort controls */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: "0.72rem", color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[0.72rem] text-text-dim uppercase tracking-[0.06em]">
           Sort by
         </span>
         {(["score", "date", "salary"] as const).map((opt) => (
           <button
             key={opt}
-            className={`filter-btn ${sortBy === opt ? "active" : ""}`}
+            className={`filter-btn ${sortBy === opt ? "active" : ""} text-[0.78rem] px-3 py-1`}
             onClick={() => setSortBy(opt)}
-            style={{ fontSize: "0.78rem", padding: "4px 12px" }}
           >
             {opt === "score" ? "Best Match" : opt === "date" ? "Newest" : "Salary ↓"}
           </button>
@@ -500,7 +419,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           <div className="empty-state">
             <p>No positions match your filters</p>
             <small>Try adjusting your search or filter criteria</small>
-            <div style={{ marginTop: 16, display: "flex", gap: 12, justifyContent: "center" }}>
+            <div className="mt-4 flex gap-3 justify-center">
               <button className="filter-btn" onClick={resetFilters}>Reset filters</button>
               <button className="apply-btn" onClick={() => setShowSearchConfig(true)} disabled={isRunning}>
                 Find New Jobs
@@ -525,7 +444,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         JobHunt — Powered by Claude
       </footer>
 
-      {/* Search config popup */}
       {showSearchConfig && (
         <SearchConfig
           onSearch={handleConfiguredSearch}
@@ -534,14 +452,6 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         />
       )}
 
-      {/* Batch queue modal */}
-      {showBatchModal && (
-        <BatchModal
-          jobs={sorted}
-          onClose={() => setShowBatchModal(false)}
-          onStarted={() => setShowBatchModal(false)}
-        />
-      )}
     </div>
   );
 }

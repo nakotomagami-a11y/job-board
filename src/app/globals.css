@@ -1,3 +1,25 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-text-base: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-primary: var(--c-primary);
+  --color-secondary: var(--c-secondary);
+  --color-accent: var(--c-accent);
+  --color-pink: var(--c-pink);
+  --color-purple: var(--c-purple);
+  --color-danger: #f87171;
+  --radius-card: var(--radius);
+  --radius-sm: var(--radius-sm);
+  --radius-pill: var(--radius-pill);
+}
+
 /* ── Reset & Base ─────────────────────────────────────────── */
 :root {
   --bg: #0a0a0f;
@@ -200,6 +222,9 @@ body::before {
   color: var(--text-dim); cursor: pointer; transition: all 0.2s;
 }
 .card-action-btn:hover { background: var(--surface-hover); border-color: var(--border-hover); }
+
+.section-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 6px; }
+.section-box { background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 20px; }
 
 .card-action-applied:hover { background: rgba(52,211,153,0.15); border-color: rgba(52,211,153,0.4); color: #34d399; }
 .card-action-reject:hover { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.4); color: #f87171; }

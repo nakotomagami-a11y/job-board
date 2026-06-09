@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { Job } from "@shared/types/job";
-import { applyFilters, initialFilters, type Filters } from "@lib/filter-jobs";
+import type { Job } from "@/types/job";
+import { applyFilters, initialFilters, type Filters } from "@lib/job-scoring";
 
-export type { Filters, StatusFilter } from "@lib/filter-jobs";
+export type { Filters, StatusFilter } from "@lib/job-scoring";
 
 export function useFilters(jobs: Job[]) {
   const [filters, setFilters] = useState<Filters>(initialFilters);

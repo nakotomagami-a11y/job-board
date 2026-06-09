@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import type { Job } from "@shared/types/job";
-import { readBlocklist, addCompany, removeCompany, isBlocked } from "@lib/company-blocklist";
+import type { Job } from "@/types/job";
+import { readBlocklist, addCompany, removeCompany, isBlocked } from "@lib/data-access";
 
 const JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
 

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import type { Job } from "@shared/types/job";
-import type { UserProfile } from "@shared/types/profile";
-import { mergeJobs } from "@lib/job-dedup";
-import { sanitizeJobs } from "@lib/sanitize-job";
-import { recordSubmission, recordRejection } from "@lib/board-stats";
-import { rubricReject } from "@lib/score-job";
-import { classifyRegion } from "@lib/region-filter";
-import { readBlocklist, isBlocked } from "@lib/company-blocklist";
+import type { Job } from "@/types/job";
+import type { UserProfile } from "@/types/profile";
+import { mergeJobs } from "@lib/job-utils";
+import { sanitizeJobs } from "@lib/job-utils";
+import { recordSubmission, recordRejection } from "@lib/data-access";
+import { rubricReject } from "@lib/job-scoring";
+import { classifyRegion } from "@lib/job-utils";
+import { readBlocklist, isBlocked } from "@lib/data-access";
 
 const USER_JOBS_PATH = path.join(process.cwd(), "data", "user", "jobs.json");
 const PROFILE_PATH = path.join(process.cwd(), "data", "user", "profile.json");
@@ -77,12 +77,17 @@ export async function POST(req: Request) {
     // or dedup so they never touch storage. 'unknown' verdicts (ambiguous or
     // worldwide-remote) are let through for manual review.
     const regionRejected: { id: string; location: string }[] = [];
+    const unknownEu: { id: string; location: string }[] = [];
     const afterRegion = newJobs.filter((j) => {
       const verdict = classifyRegion(j.location ?? '', j.region ?? '', j.remote ?? false);
       if (verdict === 'non_eu') {
         regionRejected.push({ id: j.id, location: j.location ?? '' });
         console.log(`[region-filter] rejected non-EU: ${j.id} — "${j.location ?? ''}"`);
         return false;
+      }
+      if (verdict === 'unknown') {
+        unknownEu.push({ id: j.id, location: j.location ?? '' });
+        console.log(`[region-filter] let through as unknown: ${j.id} — "${j.location ?? ''}"`);
       }
       return true;
     });
@@ -144,6 +149,7 @@ export async function POST(req: Request) {
       rejectedAsStale: staleRejected.length,
       rejectedAsNonEu: regionRejected.length,
       rejectedAsBlocked: blockedRejected.length,
+      letThroughAsUnknown: unknownEu.length,
     }, { headers: CORS_HEADERS });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500, headers: CORS_HEADERS });

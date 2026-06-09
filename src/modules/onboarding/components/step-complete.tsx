@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserProfile } from "@shared/types/profile";
+import type { UserProfile } from "@/types/profile";
 
 interface StepCompleteProps {
   draft: UserProfile;
@@ -10,31 +10,16 @@ interface StepCompleteProps {
 
 export function StepComplete({ draft, onFinish, onBack }: StepCompleteProps) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <div style={{ fontSize: "3rem", marginBottom: 16 }}>🚀</div>
-      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 12 }}>
+    <div className="text-center">
+      <div className="text-[3rem] mb-4">🚀</div>
+      <h2 className="text-[1.5rem] font-bold mb-3">
         You&apos;re all set{draft.name ? `, ${draft.name.split(" ")[0]}` : ""}!
       </h2>
-      <p
-        style={{
-          color: "var(--text-muted)",
-          marginBottom: 32,
-          fontSize: "0.9rem",
-        }}
-      >
+      <p className="text-text-muted mb-8 text-[0.9rem]">
         Your profile is ready. Here&apos;s a summary:
       </p>
 
-      <div
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          padding: 24,
-          textAlign: "left",
-          marginBottom: 32,
-        }}
-      >
+      <div className="bg-surface border border-border rounded-2xl p-6 text-left mb-8">
         <ProfileRow label="Name" value={draft.name || "Not set"} />
         <ProfileRow
           label="Work Style"
@@ -71,14 +56,13 @@ export function StepComplete({ draft, onFinish, onBack }: StepCompleteProps) {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 12 }}>
+      <div className="flex gap-3">
         <button className="filter-btn" onClick={onBack}>
           ← Back
         </button>
         <button
-          className="apply-btn"
+          className="apply-btn flex-1 justify-center px-8 py-3 text-[0.95rem]"
           onClick={onFinish}
-          style={{ flex: 1, justifyContent: "center", padding: "12px 32px", fontSize: "0.95rem" }}
         >
           Go to Dashboard →
         </button>
@@ -89,17 +73,9 @@ export function StepComplete({ draft, onFinish, onBack }: StepCompleteProps) {
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "8px 0",
-        borderBottom: "1px solid var(--border)",
-        fontSize: "0.85rem",
-      }}
-    >
-      <span style={{ color: "var(--text-dim)" }}>{label}</span>
-      <span style={{ color: "var(--text)", fontWeight: 500, textAlign: "right", maxWidth: "60%" }}>
+    <div className="flex justify-between py-2 border-b border-border text-[0.85rem]">
+      <span className="text-text-dim">{label}</span>
+      <span className="text-text-base font-medium text-right max-w-[60%]">
         {value}
       </span>
     </div>

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API } from "@lib/constants";
-import { queryKeys } from "@shared/query-keys";
+import { queryKeys } from "@lib/query-keys";
 
 export interface Source {
   name: string;

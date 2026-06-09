@@ -72,11 +72,6 @@ const countryOptions = worldCountries
   .map((c) => ({ value: c.cca2, label: `${c.flag} ${c.name.common}`, name: c.name.common }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
-const LABEL: React.CSSProperties = {
-  fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase",
-  letterSpacing: "0.06em", color: "var(--text-dim)", marginBottom: 6,
-};
-
 const selectStyles = {
   control: (base: Record<string, unknown>) => ({ ...base, background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", borderRadius: 10, minHeight: 40, boxShadow: "none", "&:hover": { borderColor: "rgba(255,255,255,0.18)" } }),
   menu: (base: Record<string, unknown>) => ({ ...base, background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, zIndex: 50 }),
@@ -92,7 +87,6 @@ const selectStyles = {
   clearIndicator: (base: Record<string, unknown>) => ({ ...base, color: "#71717a", "&:hover": { color: "#f87171" } }),
 };
 
-// Editable chip list with suggestions + custom input
 function EditableChips({ label, items, suggestions, onChange, placeholder }: {
   label: string; items: string[]; suggestions: string[]; onChange: (v: string[]) => void; placeholder: string;
 }) {
@@ -108,39 +102,34 @@ function EditableChips({ label, items, suggestions, onChange, placeholder }: {
   const available = suggestions.filter((s) => !items.includes(s));
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={LABEL}>{label}</div>
-      {/* Selected */}
+    <div className="mb-4">
+      <div className="section-label">{label}</div>
       {items.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+        <div className="flex flex-wrap gap-[5px] mb-2">
           {items.map((item) => (
             <button key={item} onClick={() => toggle(item)}
-              className="filter-btn active" style={{ fontSize: "0.76rem", padding: "4px 10px" }}>
+              className="filter-btn active text-[0.76rem] px-2.5 py-1">
               {item} ×
             </button>
           ))}
         </div>
       )}
-      {/* Suggestions */}
       {available.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+        <div className="flex flex-wrap gap-[5px] mb-2">
           {available.map((opt) => (
             <button key={opt} onClick={() => toggle(opt)}
-              className="filter-btn" style={{ fontSize: "0.76rem", padding: "4px 10px" }}>
+              className="filter-btn text-[0.76rem] px-2.5 py-1">
               + {opt}
             </button>
           ))}
         </div>
       )}
-      {/* Custom input */}
-      <div style={{ display: "flex", gap: 6 }}>
-        <input type="text" className="search-input"
-          style={{ paddingLeft: 10, flex: 1, fontSize: "0.8rem" }}
+      <div className="flex gap-1.5">
+        <input type="text" className="search-input pl-2.5 flex-1 text-[0.8rem]"
           placeholder={placeholder} value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
-        <button className="filter-btn" onClick={add} disabled={!input.trim()}
-          style={{ fontSize: "0.76rem", flexShrink: 0 }}>Add</button>
+        <button className="filter-btn text-[0.76rem] shrink-0" onClick={add} disabled={!input.trim()}>Add</button>
       </div>
     </div>
   );
@@ -154,13 +143,12 @@ function ChipSelect({ label, options, selected, onChange }: {
     else onChange([...selected, opt]);
   };
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={LABEL}>{label}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    <div className="mb-4">
+      <div className="section-label">{label}</div>
+      <div className="flex flex-wrap gap-1.5">
         {options.map((opt) => (
           <button key={opt} onClick={() => toggle(opt)}
-            className={`filter-btn ${selected.includes(opt) ? "active" : ""}`}
-            style={{ fontSize: "0.78rem", padding: "5px 12px" }}>
+            className={`filter-btn ${selected.includes(opt) ? "active" : ""} text-[0.78rem] px-3 py-[5px]`}>
             {opt}
           </button>
         ))}
@@ -173,14 +161,12 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
   const [config, setConfig] = useState<SearchParams>(DEFAULT_PARAMS);
   const [loaded, setLoaded] = useState(false);
 
-  // Load saved params from localStorage on mount (falls back to DEFAULT_PARAMS)
   useEffect(() => {
     const saved = loadSavedParams();
     if (saved) setConfig(saved);
     setLoaded(true);
   }, []);
 
-  // Persist to localStorage on every change (skip initial mount)
   useEffect(() => {
     if (loaded) saveParams(config);
   }, [config, loaded]);
@@ -192,59 +178,49 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
   const hasCountries = config.countries.length > 0;
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 1000,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-    }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{
-        background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 20,
-        padding: 28, maxWidth: 580, width: "92%", maxHeight: "85vh", overflow: "auto",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ fontSize: "1.2rem", fontWeight: 700 }}>🔍 What are you looking for?</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.6)] backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-bg border border-border rounded-[20px] p-7 max-w-[580px] w-[92%] max-h-[85vh] overflow-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-[1.2rem] font-bold">🔍 What are you looking for?</h2>
+          <button onClick={onClose} className="bg-transparent border-none text-text-dim text-[1.2rem] cursor-pointer">✕</button>
         </div>
 
-        <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginBottom: 16 }}>
+        <p className="text-text-muted text-[0.82rem] mb-4">
           Leave empty for a broad search using your profile preferences.
         </p>
 
         {/* Toggles row */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          <button className={`filter-btn ${config.remoteOnly ? "active" : ""}`}
-            onClick={() => update("remoteOnly", !config.remoteOnly)}
-            style={{ fontSize: "0.78rem", padding: "5px 12px" }}>
+        <div className="flex gap-2 mb-4 flex-wrap">
+          <button className={`filter-btn ${config.remoteOnly ? "active" : ""} text-[0.78rem] px-3 py-[5px]`}
+            onClick={() => update("remoteOnly", !config.remoteOnly)}>
             🌍 Remote only
           </button>
-          <button className={`filter-btn ${config.localOnly ? "active" : ""}`}
-            onClick={() => update("localOnly", !config.localOnly)}
-            style={{ fontSize: "0.78rem", padding: "5px 12px" }}>
+          <button className={`filter-btn ${config.localOnly ? "active" : ""} text-[0.78rem] px-3 py-[5px]`}
+            onClick={() => update("localOnly", !config.localOnly)}>
             📍 Local boards only {config.localOnly && !hasCountries && "(select countries below)"}
           </button>
         </div>
 
-        {/* Regions */}
         <ChipSelect label="Regions" options={REGION_SUGGESTIONS} selected={config.regions}
           onChange={(v) => update("regions", v)} />
 
-        {/* Role types — editable */}
         <EditableChips label="Role Types" items={config.roleTypes}
           suggestions={ROLE_SUGGESTIONS} onChange={(v) => update("roleTypes", v)}
           placeholder="Add custom role (e.g. WebGL Developer)" />
 
-        {/* Seniority */}
         <ChipSelect label="Seniority" options={SENIORITY_OPTIONS} selected={config.seniority}
           onChange={(v) => update("seniority", v)} />
 
-        {/* Categories — editable */}
         <EditableChips label="Industry / Category" items={config.categories}
           suggestions={CATEGORY_SUGGESTIONS} onChange={(v) => update("categories", v)}
           placeholder="Add custom category (e.g. HealthTech, EdTech)" />
 
         {/* Countries */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={LABEL}>Specific Countries (searches local job boards)</div>
+        <div className="mb-4">
+          <div className="section-label">Specific Countries (searches local job boards)</div>
           <Select isMulti options={countryOptions}
             value={countryOptions.filter((o) => config.countries.includes(o.name))}
             onChange={(val) => update("countries", (val || []).map((v) => v.name))}
@@ -252,7 +228,7 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
             filterOption={(option, input) => !input || option.data.name.toLowerCase().includes(input.toLowerCase())}
             styles={selectStyles} />
           {hasCountries && (
-            <div style={{ marginTop: 6, fontSize: "0.72rem", color: config.localOnly ? "var(--c-accent)" : "var(--text-dim)" }}>
+            <div className={`mt-1.5 text-[0.72rem] ${config.localOnly ? "text-accent" : "text-text-dim"}`}>
               {config.localOnly
                 ? `🔒 Will ONLY search local boards in ${config.countries.join(", ")}`
                 : `Will search local boards in ${config.countries.join(", ")} + global sources`
@@ -262,16 +238,16 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
         </div>
 
         {/* Salary + Custom query side by side */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-          <div style={{ flex: "0 0 180px" }}>
-            <div style={LABEL}>Min Salary (USD/yr)</div>
-            <input type="number" className="search-input" style={{ paddingLeft: 10, fontSize: "0.82rem" }}
+        <div className="flex gap-3 mb-5">
+          <div className="w-[180px] shrink-0">
+            <div className="section-label">Min Salary (USD/yr)</div>
+            <input type="number" className="search-input pl-2.5 text-[0.82rem]"
               placeholder="80000" value={config.salaryMin}
               onChange={(e) => update("salaryMin", e.target.value)} />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={LABEL}>Custom Focus</div>
-            <input type="text" className="search-input" style={{ paddingLeft: 10, fontSize: "0.82rem" }}
+          <div className="flex-1">
+            <div className="section-label">Custom Focus</div>
+            <input type="text" className="search-input pl-2.5 text-[0.82rem]"
               placeholder='"YC startups", "blockchain gaming"'
               value={config.customQuery}
               onChange={(e) => update("customQuery", e.target.value)} />
@@ -279,12 +255,12 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
         </div>
 
         {/* Batch size */}
-        <div style={{ marginBottom: 20, padding: "14px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={LABEL}>
+        <div className="mb-5 px-4 py-3.5 bg-[rgba(255,255,255,0.03)] rounded-xl border border-[rgba(255,255,255,0.06)]">
+          <div className="flex justify-between items-center mb-2">
+            <div className="section-label">
               Boards per batch — {config.maxBoards === 55 ? "ALL (55)" : config.maxBoards}
             </div>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-dim)" }}>
+            <div className="text-[0.7rem] text-text-dim">
               {config.maxBoards <= 5 ? "🟢 Quick" : config.maxBoards <= 15 ? "🟡 Medium" : config.maxBoards <= 30 ? "🟠 Large" : "🔴 Full sweep"}
             </div>
           </div>
@@ -294,51 +270,40 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
               update("maxBoards", v);
               update("searchScope", v <= 15 ? "focused" : "broad");
             }}
-            style={{ width: "100%", accentColor: "var(--c-accent)" }} />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.65rem", color: "var(--text-dim)", marginTop: 4 }}>
+            className="w-full"
+            style={{ accentColor: "var(--c-accent)" }} />
+          <div className="flex justify-between text-[0.65rem] text-text-dim mt-1">
             <span>Quick (1-5)</span>
             <span>Medium (6-15)</span>
             <span>Large (16-30)</span>
             <span>All 55</span>
           </div>
-          <div style={{ marginTop: 8, fontSize: "0.7rem", color: "var(--text-dim)" }}>
+          <div className="mt-2 text-[0.7rem] text-text-dim">
             💡 Searches are batched — Claude checks {config.maxBoards} boards, then you can run again to continue with the next batch. Progress is tracked automatically.
           </div>
         </div>
 
         {/* Parallel mode toggle */}
         {config.maxBoards > 1 && (
-          <div style={{
-            marginBottom: 20, padding: "12px 16px",
-            background: config.parallelMode ? "rgba(251,146,60,0.06)" : "rgba(255,255,255,0.03)",
-            borderRadius: 12,
-            border: `1px solid ${config.parallelMode ? "rgba(251,146,60,0.25)" : "rgba(255,255,255,0.06)"}`,
-            transition: "all 0.2s ease",
-          }}>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <div className={`mb-5 px-4 py-3 rounded-xl transition-colors duration-300 ${config.parallelMode ? "bg-[rgba(251,146,60,0.06)] border border-[rgba(251,146,60,0.25)]" : "bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.06)]"}`}>
+            <label className="flex items-start gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={config.parallelMode}
                 onChange={(e) => update("parallelMode", e.target.checked)}
-                style={{
-                  marginTop: 2, accentColor: "var(--c-accent)",
-                  width: 16, height: 16, flexShrink: 0, cursor: "pointer",
-                }}
+                className="mt-[2px] w-4 h-4 shrink-0 cursor-pointer"
+                style={{ accentColor: "var(--c-accent)" }}
               />
               <div>
-                <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text)" }}>
+                <div className="text-[0.82rem] font-semibold text-text-base">
                   ⚡ Parallel search (multi-agent)
                 </div>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", marginTop: 3, lineHeight: 1.4 }}>
+                <div className="text-[0.7rem] text-text-dim mt-[3px] leading-[1.4]">
                   Searches all {config.maxBoards} boards simultaneously using separate agents.
                   Much faster, but uses ~{config.maxBoards}× more tokens.
                 </div>
                 {config.parallelMode && (
-                  <div style={{
-                    marginTop: 8, padding: "6px 10px", borderRadius: 8,
-                    background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.2)",
-                    fontSize: "0.68rem", color: "#fb923c", lineHeight: 1.4,
-                  }}>
+                  <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-[rgba(251,146,60,0.1)] border border-[rgba(251,146,60,0.2)] text-[0.68rem] text-accent leading-[1.4]">
                     ⚠️ Each board runs in its own agent context. With {config.maxBoards} boards this will
                     use significantly more API quota. Recommended for Pro plan with sufficient remaining balance.
                   </div>
@@ -349,12 +314,12 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
         )}
 
         {/* Search button */}
-        <button className="apply-btn" onClick={() => onSearch(config)} disabled={isSearching}
-          style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: "0.9rem", opacity: isSearching ? 0.6 : 1 }}>
+        <button className={`apply-btn w-full justify-center px-5 py-3 text-[0.9rem] ${isSearching ? "opacity-60" : ""}`}
+          onClick={() => onSearch(config)} disabled={isSearching}>
           {isSearching ? "⏳ Generating prompt..." : "🔍 Generate Search Prompt"}
         </button>
 
-        <div style={{ textAlign: "center", marginTop: 8, fontSize: "0.7rem", color: "var(--text-dim)" }}>
+        <div className="text-center mt-2 text-[0.7rem] text-text-dim">
           Generates a prompt for Claude Code — no API cost until you run it
         </div>
       </div>

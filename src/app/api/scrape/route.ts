@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rateLimit } from "@lib/rate-limit";
+import { rateLimit } from "@lib/server-utils";
 
 // Headless rendering for JS-heavy boards (Himalayas, Wellfound, startup.jobs,
 // Working Nomads, YC Work at a Startup). Replaces the Browser MCP fallback in

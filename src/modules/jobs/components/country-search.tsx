@@ -67,7 +67,6 @@ interface CountrySearchProps {
   isSearching: boolean;
 }
 
-// Build sorted options from world-countries package
 const countryOptions: CountryOption[] = worldCountries
   .map((c) => ({
     value: c.cca2,
@@ -80,39 +79,28 @@ export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
   const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState<CountryOption[]>([]);
 
-  // Memoize to avoid re-renders
   const selectedNames = useMemo(
     () => selected.map((s) => s.label).join(", "),
     [selected]
   );
 
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div className="mb-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="filter-btn"
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          margin: "0 auto", fontSize: "0.82rem",
-        }}
+        className="filter-btn flex items-center gap-1.5 mx-auto text-[0.82rem]"
       >
         🌍 {expanded ? "Hide" : "Local Job Boards"}
         {selected.length > 0 && (
-          <span style={{
-            background: "var(--c-primary)", color: "#0a0a0f",
-            borderRadius: 99, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700,
-          }}>
+          <span className="bg-primary text-[#0a0a0f] rounded-full px-[7px] py-[1px] text-[0.72rem] font-bold">
             {selected.length}
           </span>
         )}
       </button>
 
       {expanded && (
-        <div style={{ marginTop: 12, maxWidth: 560, margin: "12px auto 0" }}>
-          <div style={{
-            fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase",
-            letterSpacing: "0.06em", color: "var(--text-dim)", marginBottom: 8,
-          }}>
+        <div className="mt-3 max-w-[560px] mx-auto">
+          <div className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-text-dim mb-2">
             Select countries — Claude will find local job boards and search them
           </div>
 
@@ -201,24 +189,16 @@ export function CountrySearch({ onSearch, isSearching }: CountrySearchProps) {
             }}
           />
 
-          {/* Selected preview + search button */}
           {selected.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{
-                fontSize: "0.75rem", color: "var(--text-dim)", marginBottom: 10,
-              }}>
+            <div className="mt-3">
+              <div className="text-[0.75rem] text-text-dim mb-2.5">
                 Claude will discover and search local job boards in: {selectedNames}
               </div>
 
               <button
-                className="apply-btn"
+                className={`apply-btn w-full justify-center px-5 py-2.5 text-[0.85rem] ${isSearching ? "opacity-60" : ""}`}
                 onClick={() => onSearch(selected)}
                 disabled={isSearching}
-                style={{
-                  width: "100%", justifyContent: "center",
-                  padding: "10px 20px", fontSize: "0.85rem",
-                  opacity: isSearching ? 0.6 : 1,
-                }}
               >
                 {isSearching
                   ? `⏳ Searching ${selected.length} countries...`

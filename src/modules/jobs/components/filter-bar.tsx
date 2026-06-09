@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { REGIONS, SENIORITIES, TIMEFRAMES } from "@shared/config/filters";
-import { sourceLabel } from "@lib/filter-jobs";
+import { REGIONS, SENIORITIES, TIMEFRAMES } from "@/config/filters";
+import { sourceLabel } from "@lib/job-scoring";
 import type { Filters, StatusFilter } from "../hooks/use-filters";
-import type { Job } from "@shared/types/job";
+import type { Job } from "@/types/job";
 
 const STATUS_OPTIONS: StatusFilter[] = ["All", "Active", "Applied", "Rejected"];
 
@@ -26,7 +26,7 @@ function FilterGroup({
   value: string;
   onChange: (v: string) => void;
 }) {
-  if (options.length <= 1) return null; // Don't show if only "All"
+  if (options.length <= 1) return null;
   return (
     <div>
       <div className="filter-group-label">{label}</div>
@@ -48,7 +48,6 @@ function FilterGroup({
 export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Status counts and dynamic option sets only need to recompute when jobs change.
   const { statusCounts, categories, companyTypes, roleTypes, sources } = useMemo(() => {
     let applied = 0;
     let rejected = 0;
@@ -77,7 +76,6 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
     };
   }, [jobs]);
 
-  // Active filter accounting only depends on the filters object.
   const { hasActiveFilters, activeCount } = useMemo(() => {
     const flags = [
       filters.region !== "All",
@@ -93,13 +91,11 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
     return { hasActiveFilters: count > 0, activeCount: count };
   }, [filters]);
 
-  // Primary filters always visible: Region + Timeframe
-  // Secondary filters behind "More filters" toggle
   return (
     <div className="filters">
       {/* Always visible: Region + Posted Within */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
+      <div className="flex gap-4 flex-wrap">
+        <div className="flex-1 min-w-[200px]">
           <FilterGroup
             label="Region"
             options={REGIONS}
@@ -152,9 +148,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
             >
               {opt}
               {opt !== "All" && (
-                <span style={{
-                  marginLeft: 4, fontSize: "0.68rem", opacity: 0.6,
-                }}>
+                <span className="ml-1 text-[0.68rem] opacity-60">
                   {statusCounts[opt]}
                 </span>
               )}
@@ -164,27 +158,20 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
       </div>
 
       {/* Toggle for more filters */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="flex gap-2 items-center">
         <button
           onClick={() => setExpanded(!expanded)}
-          style={{
-            background: "none", border: "none", color: "var(--text-dim)",
-            fontSize: "0.75rem", cursor: "pointer", padding: 0, fontFamily: "inherit",
-          }}
+          className="bg-transparent border-none text-text-dim text-[0.75rem] cursor-pointer p-0 font-[inherit]"
         >
           {expanded ? "▾ Less filters" : "▸ More filters"}
           {activeCount > 0 && !expanded && (
-            <span style={{
-              background: "var(--c-primary)", color: "#0a0a0f",
-              borderRadius: 99, padding: "1px 6px", fontSize: "0.68rem",
-              fontWeight: 700, marginLeft: 6,
-            }}>
+            <span className="bg-primary text-[#0a0a0f] rounded-full px-[6px] py-[1px] text-[0.68rem] font-bold ml-1.5">
               {activeCount}
             </span>
           )}
         </button>
         {hasActiveFilters && (
-          <button className="clear-btn" onClick={resetFilters} style={{ fontSize: "0.72rem", padding: "3px 10px" }}>
+          <button className="clear-btn text-[0.72rem] px-2.5 py-[3px]" onClick={resetFilters}>
             Clear all
           </button>
         )}

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Job } from "@shared/types/job";
-import type { UserProfile } from "@shared/types/profile";
-import { scoreJob } from "@lib/score-job";
+import type { Job } from "@/types/job";
+import type { UserProfile } from "@/types/profile";
+import { scoreJob } from "@lib/job-scoring";
 
 export function useJobScoring(
   jobs: Job[],

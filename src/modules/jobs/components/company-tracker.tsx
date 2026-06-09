@@ -33,73 +33,50 @@ export function CompanyTracker({ onSearch, isSearching }: CompanyTrackerProps) {
   };
 
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div className="mb-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="filter-btn"
-        style={{
-          display: "flex", alignItems: "center", gap: 6,
-          margin: "0 auto", fontSize: "0.82rem",
-        }}
+        className="filter-btn flex items-center gap-1.5 mx-auto text-[0.82rem]"
       >
         🏢 {expanded ? "Hide" : "Track Companies"}
         {companies.length > 0 && (
-          <span style={{
-            background: "var(--c-primary)", color: "#0a0a0f",
-            borderRadius: 99, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700,
-          }}>
+          <span className="bg-primary text-[#0a0a0f] rounded-full px-[7px] py-[1px] text-[0.72rem] font-bold">
             {companies.length}
           </span>
         )}
       </button>
 
       {expanded && (
-        <div style={{ marginTop: 12, maxWidth: 560, margin: "12px auto 0" }}>
+        <div className="mt-3 max-w-[560px] mx-auto">
           {error && (
-            <div style={{
-              padding: "8px 12px", marginBottom: 12, borderRadius: 8,
-              background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
-              color: "#f87171", fontSize: "0.78rem",
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-            }}>
+            <div className="px-3 py-2 mb-3 rounded-lg bg-[rgba(248,113,113,0.08)] border border-[rgba(248,113,113,0.2)] text-danger text-[0.78rem] flex items-center justify-between gap-2">
               <span>Couldn&apos;t load companies: {error instanceof Error ? error.message : "Unknown error"}</span>
-              <button className="filter-btn" style={{ fontSize: "0.72rem", padding: "2px 8px" }} onClick={() => refetch()}>
+              <button className="filter-btn text-[0.72rem] px-2 py-[2px]" onClick={() => refetch()}>
                 Retry
               </button>
             </div>
           )}
-          <div style={{
-            fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase",
-            letterSpacing: "0.06em", color: "var(--text-dim)", marginBottom: 8,
-          }}>
+          <div className="text-[0.7rem] font-semibold uppercase tracking-[0.06em] text-text-dim mb-2">
             Add companies to track — Claude checks their career pages + external boards
           </div>
 
-          {/* Company list */}
           {companies.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+            <div className="flex flex-col gap-1 mb-3">
               {companies.map((company, i) => (
-                <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 12px", borderRadius: 8,
-                  background: "var(--surface)", fontSize: "0.82rem",
-                }}>
-                  <span style={{ color: "var(--text)", flex: 1, fontWeight: 500 }}>
+                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface text-[0.82rem]">
+                  <span className="text-text-base flex-1 font-medium">
                     {company.name}
                   </span>
                   {company.careersUrl && (
                     <a href={company.careersUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ color: "var(--text-dim)", fontSize: "0.72rem", textDecoration: "none" }}
+                      className="text-text-dim text-[0.72rem] no-underline"
                       title={company.careersUrl}>
                       careers ↗
                     </a>
                   )}
                   <button
                     onClick={() => removeCompany(i)}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      color: "var(--text-dim)", fontSize: "0.8rem", padding: 0,
-                    }}
+                    className="bg-transparent border-none cursor-pointer text-text-dim text-[0.8rem] p-0"
                   >
                     ×
                   </button>
@@ -109,40 +86,31 @@ export function CompanyTracker({ onSearch, isSearching }: CompanyTrackerProps) {
           )}
 
           {/* Add company */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          <div className="flex gap-1.5 mb-3">
             <input
-              type="text" className="search-input"
-              style={{ paddingLeft: 10, flex: 1, fontSize: "0.82rem" }}
+              type="text" className="search-input pl-2.5 flex-1 text-[0.82rem]"
               placeholder="Company name (e.g. Rockstar Games)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCompany(); } }}
             />
             <input
-              type="text" className="search-input"
-              style={{ paddingLeft: 10, flex: 1, fontSize: "0.82rem" }}
+              type="text" className="search-input pl-2.5 flex-1 text-[0.82rem]"
               placeholder="Careers URL (optional)"
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCompany(); } }}
             />
-            <button className="filter-btn" onClick={addCompany} disabled={!newName.trim()}
-              style={{ fontSize: "0.78rem", flexShrink: 0 }}>
+            <button className="filter-btn text-[0.78rem] shrink-0" onClick={addCompany} disabled={!newName.trim()}>
               Add
             </button>
           </div>
 
-          {/* Search button */}
           {companies.length > 0 && (
             <button
-              className="apply-btn"
+              className={`apply-btn w-full justify-center px-5 py-2.5 text-[0.85rem] ${isSearching ? "opacity-60" : ""}`}
               onClick={() => onSearch(companies)}
               disabled={isSearching}
-              style={{
-                width: "100%", justifyContent: "center",
-                padding: "10px 20px", fontSize: "0.85rem",
-                opacity: isSearching ? 0.6 : 1,
-              }}
             >
               {isSearching
                 ? `⏳ Checking ${companies.length} companies...`

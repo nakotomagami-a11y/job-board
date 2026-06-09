@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Job } from "@shared/types/job";
-import { REGION_COLORS, ROLE_TYPE_COLORS } from "@shared/config/filters";
+import type { Job } from "@/types/job";
+import { REGION_COLORS, ROLE_TYPE_COLORS } from "@/config/filters";
 import { JobScoreBadge } from "./job-score-badge";
 import { API } from "@lib/constants";
 
@@ -56,36 +56,9 @@ function isStale(dateStr: string): boolean {
 
 export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobCardProps) {
   const companyColor = getCompanyColor(job.company);
-  const [aiState, setAiState] = useState<"idle" | "loading" | "queued" | "err">("idle");
-  const [aiMsg, setAiMsg] = useState<string | null>(null);
   const [blockState, setBlockState] = useState<"idle" | "loading" | "done" | "err">("idle");
   const [blockMsg, setBlockMsg] = useState<string | null>(null);
 
-  const handleAutoApply = async () => {
-    setAiState("loading");
-    setAiMsg(null);
-    try {
-      const res = await fetch(API.applyDraft, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: job.id }),
-      });
-      const data = (await res.json()) as { status?: string; error?: string };
-      if (res.ok) {
-        setAiState("queued");
-        setAiMsg("✓ Browser opening — scroll up to review");
-        setTimeout(() => { setAiState("idle"); setAiMsg(null); }, 6000);
-      } else {
-        setAiState("err");
-        setAiMsg(res.status === 409 ? "Another draft already pending — finish that first" : (data.error ?? "Failed"));
-        setTimeout(() => { setAiState("idle"); setAiMsg(null); }, 6000);
-      }
-    } catch (e) {
-      setAiState("err");
-      setAiMsg(e instanceof Error ? e.message : "Failed");
-      setTimeout(() => { setAiState("idle"); setAiMsg(null); }, 6000);
-    }
-  };
   const handleBlock = async () => {
     const company = job.company ?? "this company";
     if (!confirm(`Block all current and future jobs from ${company}?`)) return;
@@ -147,9 +120,9 @@ export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobC
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ minWidth: 0 }}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <div className="job-title">{job.title}</div>
             <div className="job-company">{job.company}</div>
           </div>
@@ -160,40 +133,12 @@ export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobC
             {job.rejected && (
               <span className="badge badge-rejected">Rejected</span>
             )}
-            {!job.rejected && !job.applied && (
-              <button
-                onClick={handleAutoApply}
-                disabled={aiState === "loading"}
-                className="apply-btn"
-                title="AI fills the form in a real browser. You review and submit."
-                style={{
-                  background: "rgba(139,92,246,0.12)",
-                  border: "1px solid rgba(139,92,246,0.3)",
-                  color: "#a78bfa",
-                  fontSize: "0.78rem",
-                  padding: "5px 10px",
-                  cursor: aiState === "loading" ? "wait" : "pointer",
-                  opacity: aiState === "loading" ? 0.6 : 1,
-                }}
-              >
-                {aiState === "loading" ? "⏳" : "🤖"} AI Apply
-              </button>
-            )}
             {!job.rejected && (
               <button
                 onClick={handleBlock}
                 disabled={blockState === "loading"}
-                className="apply-btn"
+                className={`apply-btn bg-[rgba(248,113,113,0.12)] border border-[rgba(248,113,113,0.3)] text-danger text-[0.78rem] px-2 py-[5px] ${blockState === "loading" ? "cursor-wait opacity-60" : "cursor-pointer"}`}
                 title="Block all jobs from this company forever"
-                style={{
-                  background: "rgba(248,113,113,0.12)",
-                  border: "1px solid rgba(248,113,113,0.3)",
-                  color: "#f87171",
-                  fontSize: "0.78rem",
-                  padding: "5px 8px",
-                  cursor: blockState === "loading" ? "wait" : "pointer",
-                  opacity: blockState === "loading" ? 0.6 : 1,
-                }}
               >
                 🚫
               </button>
@@ -238,31 +183,8 @@ export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobC
           </div>
         </div>
 
-        {aiMsg && (
-          <div style={{
-            marginTop: 6,
-            fontSize: "0.72rem",
-            padding: "4px 8px",
-            borderRadius: 6,
-            display: "inline-block",
-            background: aiState === "err" ? "rgba(248,113,113,0.08)" : "rgba(139,92,246,0.08)",
-            color: aiState === "err" ? "#f87171" : "#a78bfa",
-            border: `1px solid ${aiState === "err" ? "rgba(248,113,113,0.2)" : "rgba(139,92,246,0.2)"}`,
-          }}>
-            {aiMsg}
-          </div>
-        )}
         {blockMsg && (
-          <div style={{
-            marginTop: 6,
-            fontSize: "0.72rem",
-            padding: "4px 8px",
-            borderRadius: 6,
-            display: "inline-block",
-            background: blockState === "err" ? "rgba(248,113,113,0.08)" : "rgba(248,113,113,0.06)",
-            color: blockState === "err" ? "#f87171" : "#f87171",
-            border: `1px solid rgba(248,113,113,0.2)`,
-          }}>
+          <div className={`mt-1.5 text-[0.72rem] px-2 py-1 rounded-md inline-block text-danger border border-[rgba(248,113,113,0.2)] ${blockState === "err" ? "bg-[rgba(248,113,113,0.08)]" : "bg-[rgba(248,113,113,0.06)]"}`}>
             {blockMsg}
           </div>
         )}
@@ -293,19 +215,10 @@ export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobC
 
           <span className="badge badge-seniority">{job.seniority}</span>
 
-          <span
-            className="job-date"
-            style={isStale(job.postedDate) ? { color: "var(--text-dim)" } : undefined}
-          >
+          <span className={`job-date${isStale(job.postedDate) ? " text-text-dim" : ""}`}>
             {daysAgo(job.postedDate)}
             {isStale(job.postedDate) && (
-              <span
-                style={{
-                  marginLeft: 4, fontSize: "0.65rem", fontWeight: 600,
-                  color: "#ca8a04", background: "rgba(202,138,4,0.1)",
-                  borderRadius: 4, padding: "1px 5px",
-                }}
-              >
+              <span className="ml-1 text-[0.65rem] font-semibold text-[#ca8a04] bg-[rgba(202,138,4,0.1)] rounded px-[5px] py-[1px]">
                 stale
               </span>
             )}
@@ -321,7 +234,7 @@ export function JobCard({ job, index, onMarkApplied, onReject, onBlocked }: JobC
             <span key={tag} className="tag">{tag}</span>
           ))}
           {job.tags.length > 6 && (
-            <span className="tag" style={{ opacity: 0.5 }}>+{job.tags.length - 6}</span>
+            <span className="tag opacity-50">+{job.tags.length - 6}</span>
           )}
         </div>
       </div>

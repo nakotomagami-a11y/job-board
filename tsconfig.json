@@ -29,12 +29,6 @@
       "@modules/*": [
         "./src/modules/*"
       ],
-      "@shared/*": [
-        "./src/shared/*"
-      ],
-      "@ui/*": [
-        "./src/components/ui/*"
-      ],
       "@lib/*": [
         "./src/lib/*"
       ]

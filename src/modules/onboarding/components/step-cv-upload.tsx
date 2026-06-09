@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { UserProfile } from "@shared/types/profile";
+import type { UserProfile } from "@/types/profile";
 
 interface StepCVUploadProps {
   draft: UserProfile;
@@ -9,15 +9,6 @@ interface StepCVUploadProps {
   onNext: () => void;
   onBack: () => void;
 }
-
-const LABEL_STYLE = {
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  textTransform: "uppercase" as const,
-  letterSpacing: "0.06em",
-  color: "var(--text-dim)",
-  marginBottom: 8,
-};
 
 type Status = "idle" | "extracting" | "analyzing" | "done" | "error";
 
@@ -35,7 +26,6 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
       setFileName(file.name);
       setError("");
 
-      // Step 1: Extract text from PDF
       setStatus("extracting");
       setStatusMsg("Extracting text from PDF...");
 
@@ -52,7 +42,6 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
         const { text } = await res.json();
         if (!text || text.trim().length === 0) throw new Error("No text found in PDF");
 
-        // Apply basic extraction immediately so user sees something
         updateDraft({
           cvText: text,
           name: draft.name || fallbackExtractName(text),
@@ -60,7 +49,6 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
           skills: fallbackExtractSkills(text),
         });
 
-        // Step 2: Auto-trigger Claude analysis
         setStatus("analyzing");
         setStatusMsg("Claude is analyzing your CV...");
 
@@ -80,11 +68,9 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
               return;
             }
           }
-          // Claude call succeeded but couldn't parse — fall through to basic
           setStatus("done");
           setStatusMsg("Basic extraction applied (Claude analysis unavailable)");
         } catch {
-          // Claude analysis failed — basic extraction already applied
           setStatus("done");
           setStatusMsg("Basic extraction applied (Claude analysis unavailable)");
         }
@@ -138,27 +124,20 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
 
   return (
     <div>
-      <h2 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 8 }}>
+      <h2 className="text-[1.3rem] font-bold mb-2">
         Upload your CV
       </h2>
-      <p style={{ color: "var(--text-muted)", marginBottom: 24, fontSize: "0.9rem" }}>
+      <p className="text-text-muted mb-6 text-[0.9rem]">
         Upload your CV and Claude will automatically analyze it.
       </p>
 
       {/* File upload */}
-      <label
-        style={{
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: "center", padding: 40,
-          border: "2px dashed var(--border)", borderRadius: 16,
-          cursor: "pointer", marginBottom: 16,
-        }}
-      >
-        <div style={{ fontSize: "2rem", marginBottom: 8 }}>📄</div>
-        <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+      <label className="flex flex-col items-center justify-center p-[40px] border-2 border-dashed border-border rounded-2xl cursor-pointer mb-4">
+        <div className="text-[2rem] mb-2">📄</div>
+        <div className="text-text-muted text-[0.9rem]">
           {fileName || "Click to upload PDF"}
         </div>
-        <input type="file" accept=".pdf" onChange={handleFile} style={{ display: "none" }} />
+        <input type="file" accept=".pdf" onChange={handleFile} className="hidden" />
       </label>
 
       {/* Status banner */}
@@ -172,10 +151,10 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
         <StatusBanner color="var(--c-secondary)" icon="✓">{statusMsg}</StatusBanner>
       )}
       {status === "error" && (
-        <div style={{ marginBottom: 16 }}>
+        <div className="mb-4">
           <StatusBanner color="#f87171" icon="✗">{error}</StatusBanner>
           {draft.cvText && (
-            <button className="filter-btn" onClick={retryAnalysis} style={{ marginTop: 8, fontSize: "0.8rem" }}>
+            <button className="filter-btn mt-2 text-[0.8rem]" onClick={retryAnalysis}>
               Retry Claude Analysis
             </button>
           )}
@@ -185,39 +164,38 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
       {/* Fields — only show after analysis is complete */}
       {draft.cvText && (status === "done" || status === "error") && (
         <>
-          <div style={{ marginBottom: 20 }}>
-            <div style={LABEL_STYLE}>Your Name</div>
-            <input type="text" className="search-input" style={{ paddingLeft: 14 }}
+          <div className="mb-5">
+            <div className="section-label">Your Name</div>
+            <input type="text" className="search-input pl-3.5"
               placeholder="Enter your name" value={draft.name}
               onChange={(e) => updateDraft({ name: e.target.value })} />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <div style={LABEL_STYLE}>Email</div>
-            <input type="email" className="search-input" style={{ paddingLeft: 14 }}
+          <div className="mb-5">
+            <div className="section-label">Email</div>
+            <input type="email" className="search-input pl-3.5"
               placeholder="your@email.com" value={draft.email || ""}
               onChange={(e) => updateDraft({ email: e.target.value })} />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <div style={LABEL_STYLE}>Location</div>
-            <input type="text" className="search-input" style={{ paddingLeft: 14 }}
+          <div className="mb-5">
+            <div className="section-label">Location</div>
+            <input type="text" className="search-input pl-3.5"
               placeholder="e.g. Vilnius, Lithuania" value={draft.location || ""}
               onChange={(e) => updateDraft({ location: e.target.value })} />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
-            <div style={LABEL_STYLE}>Skills ({draft.skills.length}) — click to remove</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          <div className="mb-6">
+            <div className="section-label">Skills ({draft.skills.length}) — click to remove</div>
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
               {draft.skills.map((skill) => (
-                <button key={skill} onClick={() => removeSkill(skill)} className="tag"
-                  style={{ cursor: "pointer", border: "none", fontFamily: "inherit" }}>
+                <button key={skill} onClick={() => removeSkill(skill)} className="tag cursor-pointer border-none font-[inherit]">
                   {skill} ×
                 </button>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" className="search-input" style={{ paddingLeft: 14, flex: 1 }}
+            <div className="flex gap-2">
+              <input type="text" className="search-input pl-3.5 flex-1"
                 placeholder="Add a skill..." value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }} />
@@ -228,11 +206,11 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
       )}
 
       {/* Navigation */}
-      <div style={{ display: "flex", gap: 12 }}>
+      <div className="flex gap-3">
         <button className="filter-btn" onClick={onBack}>← Back</button>
-        <button className="apply-btn" onClick={onNext}
-          disabled={status === "extracting" || status === "analyzing"}
-          style={{ flex: 1, justifyContent: "center", opacity: status === "analyzing" ? 0.6 : 1 }}>
+        <button className={`apply-btn flex-1 justify-center ${status === "analyzing" ? "opacity-60" : ""}`}
+          onClick={onNext}
+          disabled={status === "extracting" || status === "analyzing"}>
           {draft.cvText ? "Continue" : "Skip for now"} →
         </button>
       </div>
@@ -242,12 +220,14 @@ export function StepCVUpload({ draft, updateDraft, onNext, onBack }: StepCVUploa
 
 function StatusBanner({ color, icon, children }: { color: string; icon: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: `color-mix(in srgb, ${color} 8%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
-      borderRadius: 12, padding: 12, marginBottom: 16,
-      fontSize: "0.82rem", color, display: "flex", alignItems: "center", gap: 8,
-    }}>
+    <div
+      className="rounded-xl p-3 mb-4 text-[0.82rem] flex items-center gap-2"
+      style={{
+        background: `color-mix(in srgb, ${color} 8%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+        color,
+      }}
+    >
       <span>{icon}</span> {children}
     </div>
   );
