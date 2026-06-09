@@ -287,7 +287,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       {showBlocklist && <BlocklistPanel onClose={() => setShowBlocklist(false)} />}
 
       {/* Actions row */}
-      <div className="flex gap-2 justify-center mb-2.5 flex-wrap">
+      <div className="flex gap-2 justify-center mb-6 flex-wrap">
         <button className="apply-btn px-4.5 py-2 text-[0.82rem]" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
           style={{ opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
           {activeAction === "search" && isRunning ? "⏳ Searching..." : "🔍 Find New Jobs"}
@@ -332,7 +332,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       </div>
 
       {/* Expandable search options */}
-      <div className="flex gap-2 justify-center flex-wrap mb-6">
+      <div className="flex gap-2 justify-center flex-wrap mb-12">
         <CountrySearch onSearch={handleCountrySearch} isSearching={isRunning} />
         <CompanyTracker onSearch={handleCompanySearch} isSearching={isRunning} />
         <SourcesPanel jobs={jobs} />

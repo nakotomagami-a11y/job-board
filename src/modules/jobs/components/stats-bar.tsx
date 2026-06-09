@@ -15,7 +15,7 @@ export function StatsBar({ jobs, filteredCount }: StatsBarProps) {
   const companies = new Set(jobs.map((j) => j.company)).size;
 
   return (
-    <div className="flex gap-8 justify-center py-5 mb-7 border-b border-border">
+    <div className="flex gap-8 justify-center py-5 mb-12 border-b border-border">
       <span className="badge bg-[rgba(167,139,250,0.15)] text-purple self-center">EU-only policy active</span>
       <div className="text-center">
         <div className="text-[1.8rem] font-extrabold text-text-base leading-none">{filteredCount}</div>

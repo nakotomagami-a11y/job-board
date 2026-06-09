@@ -90,7 +90,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
   }, [filters]);
 
   return (
-    <div className="flex flex-col gap-[14px] mb-8">
+    <div className="flex flex-col gap-5 mb-10">
       {/* Posted Within */}
       <div>
         <div className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-text-dim mb-1.5">Posted Within</div>
