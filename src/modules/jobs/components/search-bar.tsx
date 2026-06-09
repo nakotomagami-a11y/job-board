@@ -22,7 +22,7 @@ export function SearchBar({ value, onChange, resultCount, totalCount }: SearchBa
         onChange={(e) => onChange(e.target.value)}
       />
       {value && (
-        <span className="search-count">
+        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-dim text-[0.78rem]">
           {resultCount} result{resultCount !== 1 ? "s" : ""}
         </span>
       )}

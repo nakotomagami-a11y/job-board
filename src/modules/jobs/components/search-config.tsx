@@ -12,7 +12,7 @@ interface SearchConfigProps {
 
 export interface SearchParams {
   regions: string[];
-  roleTypes: string[];
+  stack: string[];
   seniority: string[];
   categories: string[];
   remoteOnly: boolean;
@@ -29,12 +29,7 @@ const STORAGE_KEY = "jobhunt-search-params";
 
 const DEFAULT_PARAMS: SearchParams = {
   regions: ["Worldwide"],
-  roleTypes: [
-    "Frontend", "React Native Developer", "React Developer",
-    "JavaScript Developer", "TypeScript Developer", "Frontend Engineer",
-    "React Native Engineer", "React Engineer", "JavaScript Engineer",
-    "TypeScript Engineer",
-  ],
+  stack: ["JavaScript", "TypeScript"],
   seniority: [],
   categories: [],
   remoteOnly: true,
@@ -64,7 +59,12 @@ function saveParams(params: SearchParams) {
 }
 
 const REGION_SUGGESTIONS = ["Europe", "North America", "UK", "Asia", "Worldwide"];
-const ROLE_SUGGESTIONS = ["Frontend", "Mobile", "Full-Stack", "Design Engineer", "UI Engineer", "Creative Developer", "Software Engineer"];
+const STACK_SUGGESTIONS = [
+  "JavaScript", "TypeScript", "Python", "Go", "Rust",
+  "Java", "C#", "Swift", "Kotlin", "PHP", "Ruby",
+  "React", "Vue", "Angular", "React Native", "Node.js",
+  "Next.js", "Flutter", "Django", "FastAPI", "Spring",
+];
 const SENIORITY_OPTIONS = ["Junior", "Mid", "Senior", "Staff", "Lead", "Principal"];
 const CATEGORY_SUGGESTIONS = ["Gaming", "Crypto / Web3", "AI / ML", "Fintech", "SaaS / Dev Tools", "E-Commerce", "Startups", "Big Tech"];
 
@@ -207,9 +207,9 @@ export function SearchConfig({ onSearch, onClose, isSearching }: SearchConfigPro
         <ChipSelect label="Regions" options={REGION_SUGGESTIONS} selected={config.regions}
           onChange={(v) => update("regions", v)} />
 
-        <EditableChips label="Role Types" items={config.roleTypes}
-          suggestions={ROLE_SUGGESTIONS} onChange={(v) => update("roleTypes", v)}
-          placeholder="Add custom role (e.g. WebGL Developer)" />
+        <EditableChips label="Tech Stack" items={config.stack}
+          suggestions={STACK_SUGGESTIONS} onChange={(v) => update("stack", v)}
+          placeholder="Add tech (e.g. Go, Vue, Svelte)" />
 
         <ChipSelect label="Seniority" options={SENIORITY_OPTIONS} selected={config.seniority}
           onChange={(v) => update("seniority", v)} />

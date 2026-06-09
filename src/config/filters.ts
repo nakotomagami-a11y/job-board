@@ -11,12 +11,10 @@ export const REGIONS = [
 export const ROLE_TYPES = [
   "All",
   "Frontend",
+  "Backend",
+  "Fullstack",
   "Mobile",
-  "Full-Stack (Frontend-leaning)",
-  "Design Engineer",
-  "Creative Developer",
-  "Generalist / Product Engineer",
-  "AI Engineer",
+  "Other",
 ] as const;
 
 export const SENIORITIES = [
@@ -72,10 +70,8 @@ export const REGION_COLORS: Record<string, string> = {
 
 export const ROLE_TYPE_COLORS: Record<string, string> = {
   Frontend: "#38bdf8",
-  Mobile: "#34d399",
-  "Full-Stack (Frontend-leaning)": "#fb923c",
-  "Design Engineer": "#f472b6",
-  "Creative Developer": "#a78bfa",
-  "Generalist / Product Engineer": "#fbbf24",
-  "AI Engineer": "#22d3ee",
+  Backend: "#34d399",
+  Fullstack: "#fb923c",
+  Mobile: "#a78bfa",
+  Other: "#71717a",
 };

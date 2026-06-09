@@ -41,14 +41,7 @@ export type Region =
   | "UK"
   | "Hybrid";
 
-export type RoleType =
-  | "Frontend"
-  | "Mobile"
-  | "Full-Stack (Frontend-leaning)"
-  | "Design Engineer"
-  | "Creative Developer"
-  | "Generalist / Product Engineer"
-  | "AI Engineer";
+export type RoleType = "Frontend" | "Backend" | "Fullstack" | "Mobile" | "Other";
 
 export type Seniority =
   | "Junior"

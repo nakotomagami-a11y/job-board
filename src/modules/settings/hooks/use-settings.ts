@@ -7,7 +7,7 @@ export function useSettings() {
   const router = useRouter();
 
   function addToList(
-    key: "skills" | "preferredRoles" | "preferredCategories",
+    key: "skills" | "preferredRoles" | "preferredCategories" | "primaryStack",
     value: string,
     setter: (v: string) => void
   ) {
@@ -19,7 +19,7 @@ export function useSettings() {
   }
 
   function removeFromList(
-    key: "skills" | "preferredRoles" | "preferredCategories",
+    key: "skills" | "preferredRoles" | "preferredCategories" | "primaryStack",
     value: string
   ) {
     updateProfile({ [key]: (profile![key] as string[]).filter((v) => v !== value) });
@@ -34,6 +34,7 @@ export function useSettings() {
         name: "",
         remotePreference: "any",
         preferredRegions: [],
+        primaryStack: [],
         preferredRoles: [],
         preferredSeniority: [],
         preferredCategories: [],

@@ -1,4 +1,4 @@
-import type { Job } from "@/types/job";
+import type { Job, RoleType } from "@/types/job";
 
 /**
  * Parse a free-form salary string into a numeric range.
@@ -302,4 +302,50 @@ export function sanitizeJobs(jobs: Job[]): Job[] {
     if (safe) out.push(safe);
   }
   return out;
+}
+
+// ---- Tech-stack based discipline classifier ----
+
+const MOBILE_SIGNALS = new Set([
+  "react native", "ios", "android", "swift", "kotlin", "flutter", "expo",
+]);
+
+const FRONTEND_SIGNALS = new Set([
+  "react", "vue", "angular", "svelte", "next.js", "nextjs", "nuxt",
+  "css", "html", "tailwind", "sass", "scss", "styled-components",
+  "three.js", "threejs", "webgl", "gsap", "framer", "framer-motion",
+  "webpack", "vite", "remix", "gatsby", "astro",
+  "storybook", "figma", "design system",
+  "frontend", "front-end",
+]);
+
+const BACKEND_SIGNALS = new Set([
+  "node.js", "nodejs", "express", "fastify", "nestjs", "nest.js",
+  "python", "django", "flask", "fastapi",
+  "golang", "rust", "java", "spring", "c#", ".net", "dotnet",
+  "ruby", "rails", "php", "laravel",
+  "postgresql", "postgres", "mysql", "mongodb", "redis", "elasticsearch",
+  "kafka", "rabbitmq", "grpc", "microservices",
+  "docker", "kubernetes", "aws", "gcp", "azure",
+  "backend", "back-end",
+]);
+
+export function classifyDiscipline(
+  job: Pick<Job, "title" | "tags" | "description">,
+): RoleType {
+  const haystack = [
+    job.title ?? "",
+    ...(job.tags ?? []),
+    job.description ?? "",
+  ].join(" ").toLowerCase();
+
+  if ([...MOBILE_SIGNALS].some((s) => haystack.includes(s))) return "Mobile";
+
+  const hasFrontend = [...FRONTEND_SIGNALS].some((s) => haystack.includes(s));
+  const hasBackend = [...BACKEND_SIGNALS].some((s) => haystack.includes(s));
+
+  if (hasFrontend && hasBackend) return "Fullstack";
+  if (hasFrontend) return "Frontend";
+  if (hasBackend) return "Backend";
+  return "Other";
 }

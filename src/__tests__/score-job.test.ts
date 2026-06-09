@@ -32,6 +32,7 @@ function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
     name: "Test User",
     remotePreference: "remote",
     preferredRegions: ["Remote"],
+    primaryStack: [],
     preferredRoles: ["Frontend"],
     preferredSeniority: ["Senior"],
     preferredCategories: ["SaaS / Dev Tools"],
@@ -96,6 +97,7 @@ describe("scoreJob", () => {
       name: "",
       remotePreference: "any",
       preferredRegions: [],
+      primaryStack: [],
       preferredRoles: [],
       preferredSeniority: [],
       preferredCategories: [],
@@ -125,11 +127,11 @@ describe("scoreJob", () => {
     expect(score).toBeGreaterThan(85);
   });
 
-  it("matches Generalist / Product Engineer when profile includes Software Engineer", () => {
-    const job = makeJob({ roleType: "Generalist / Product Engineer", title: "Founding Engineer" });
+  it("matches Other roleType when profile includes Software Engineer", () => {
+    const job = makeJob({ roleType: "Other", title: "Founding Engineer" });
     const profile = makeProfile({ preferredRoles: ["Software Engineer", "Frontend Engineer"] });
     const score = scoreJob(job, profile, NOW);
-    expect(score).toBeGreaterThan(70);
+    expect(score).toBeGreaterThan(50);
   });
 
   it("awards full region score for a remote+Europe job when profile prefers both", () => {
@@ -175,6 +177,7 @@ describe("rubricReject", () => {
       name: "Dev",
       remotePreference: "remote",
       preferredRegions: ["Remote"],
+      primaryStack: [],
       preferredRoles: ["Frontend"],
       preferredSeniority: ["Senior"],
       preferredCategories: [],

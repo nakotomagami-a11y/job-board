@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const { profile, updateProfile, addToList, removeFromList, handleReset, handleRerunOnboarding } = useSettings();
   const router = useRouter();
   const [newSkill, setNewSkill] = useState("");
+  const [newStack, setNewStack] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newCategory, setNewCategory] = useState("");
 
@@ -172,6 +173,21 @@ export default function SettingsPage() {
             onInputChange={setNewSkill}
             onAdd={() => addToList("skills", newSkill, setNewSkill)}
             placeholder="Add a skill (e.g. React, TypeScript...)"
+          />
+        </div>
+      </section>
+
+      {/* === TECH STACK === */}
+      <section className="mb-7">
+        <h2 className="text-base font-bold mb-3.5">Primary Tech Stack</h2>
+        <div className="section-box">
+          <ChipEditor
+            items={profile.primaryStack ?? []}
+            onRemove={(v) => removeFromList("primaryStack", v)}
+            inputValue={newStack}
+            onInputChange={setNewStack}
+            onAdd={() => addToList("primaryStack", newStack, setNewStack)}
+            placeholder="Add language or framework (e.g. TypeScript, React)"
           />
         </div>
       </section>

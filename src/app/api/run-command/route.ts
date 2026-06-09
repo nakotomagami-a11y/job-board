@@ -27,7 +27,7 @@ const BATCH_PATH = path.join(USER_DIR, "search-batch-state.json");
 
 interface SearchConfig {
   regions?: string[];
-  roleTypes?: string[];
+  stack?: string[];
   seniority?: string[];
   categories?: string[];
   remoteOnly?: boolean;
@@ -91,6 +91,7 @@ function getRejectedHints(limit = 12): RejectedHint[] {
 
 interface ProfileSnapshot {
   skills?: string[];
+  primaryStack?: string[];
   preferredRoles?: string[];
   preferredSeniority?: string[];
   preferredRegions?: string[];
@@ -132,7 +133,14 @@ async function buildSearchPrompt(config?: SearchConfig): Promise<BuiltSearch> {
 
   if (config?.regions?.length) hardConstraints.push(`Region in: ${config.regions.join(", ")}`);
   if (config?.remoteOnly) hardConstraints.push("Remote work allowed (remote: true)");
-  if (config?.roleTypes?.length) hardConstraints.push(`Role type in: ${config.roleTypes.join(", ")}`);
+  const stack = config?.stack?.length
+    ? config.stack
+    : profile?.primaryStack?.length
+      ? profile.primaryStack
+      : (profile?.skills ?? []).slice(0, 8);
+  if (stack.length > 0) {
+    hardConstraints.push(`Tech stack must include at least one of: ${stack.join(", ")}`);
+  }
   if (config?.seniority?.length) hardConstraints.push(`Seniority in: ${config.seniority.join(", ")}`);
   if (config?.salaryMin) hardConstraints.push(`Salary >= $${config.salaryMin}/yr when listed (allow if unlisted)`);
   if (config?.categories?.length) softConstraints.push(`Prefer industries: ${config.categories.join(", ")}`);
@@ -146,7 +154,7 @@ async function buildSearchPrompt(config?: SearchConfig): Promise<BuiltSearch> {
   // queried with this exact filter set in the last 24h.
   const queryHash = hashQuery({
     regions: config?.regions,
-    roleTypes: config?.roleTypes,
+    stack: config?.stack,
     seniority: config?.seniority,
     categories: config?.categories,
     remoteOnly: config?.remoteOnly,
@@ -236,6 +244,7 @@ DELEGATE EACH BOARD TO HAIKU:
   // Inline profile so the agent doesn't have to fetch it just to apply the rubric.
   const profileSummary = profile
     ? [
+        `Primary stack: ${(profile.primaryStack ?? profile.skills ?? []).slice(0, 10).join(", ") || "JavaScript, TypeScript"}`,
         `Skills: ${(profile.skills ?? []).slice(0, 12).join(", ") || "(none recorded)"}`,
         `Preferred roles: ${(profile.preferredRoles ?? []).join(", ") || "Frontend, Mobile"}`,
         `Preferred seniority: ${(profile.preferredSeniority ?? []).join(", ") || "Mid, Senior"}`,
@@ -269,7 +278,7 @@ Reference files (read for full context):
 - ${abs("docs/COMMANDS.md")} — JSON schema and 3-layer scrape chain (WebFetch -> /api/scrape -> Chrome MCP). NEVER skip a board on first failure.
 - ${abs("data/user/profile.json")} — full candidate profile
 - ${abs("data/user/jobs.json")} — existing ${existingJobs.length} jobs (full dedup list)
-- ${abs("src/shared/config/priority-boards.ts")} — board URLs and tier structure
+- ${abs("src/config/priority-boards.ts")} — board URLs and tier structure
 
 CANDIDATE PROFILE (already extracted — apply during filtering):
 ${profileSummary}
@@ -313,7 +322,7 @@ PRECISION RUBRIC (the storage layer enforces this server-side — your job is to
 extract broadly and let it filter):
 1. URL is a direct apply page (not a search/listing index).
 2. postedDate within last 7 days (HARD RULE — storage drops anything older AND anything missing a postedDate; do not waste tokens on listings without a visible posted date).
-3. roleType in: Frontend, Mobile, Full-Stack (Frontend-leaning), Design Engineer, Creative Developer, Generalist / Product Engineer, AI Engineer.
+3. Tech stack includes at least one of the required technologies (listed in HARD FILTERS above). Do NOT filter by job title — any software engineering role that uses the required stack is valid.
 4. Skill overlap > 0 with the candidate's skills above.
 5. Not a duplicate of existing jobs (storage dedupes by id + normalized URL + company+title).
 
@@ -384,7 +393,7 @@ Use the Chrome MCP browser tools to scan LinkedIn for fresh job posts:
      location: "<location>",
      region: <infer from location: "Remote" | "Europe" | "North America" | "UK" | "Asia" | "Hybrid">,
      remote: <true if "remote" in title/location>,
-     roleType: <"Frontend" | "Full-Stack (Frontend-leaning)" | "Mobile" | "Design Engineer">,
+     roleType: <"Frontend" | "Backend" | "Fullstack" | "Mobile" | "Other">,
      seniority: <infer from title: "Junior" | "Mid" | "Senior" | "Staff" | "Lead" | "Manager">,
      url: "<full linkedin job URL>",
      tags: [<relevant tech tags from title/description>],

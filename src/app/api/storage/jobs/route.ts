@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import type { Job } from "@/types/job";
 import type { UserProfile } from "@/types/profile";
-import { mergeJobs } from "@lib/job-utils";
+import { mergeJobs, classifyDiscipline } from "@lib/job-utils";
 import { sanitizeJobs } from "@lib/job-utils";
 import { recordSubmission, recordRejection } from "@lib/data-access";
 import { rubricReject } from "@lib/job-scoring";
@@ -121,7 +121,8 @@ export async function POST(req: Request) {
         })
       : afterBlocklist;
 
-    const { merged, added } = mergeJobs(existing, accepted);
+    const classified = accepted.map((j) => ({ ...j, roleType: classifyDiscipline(j) }));
+    const { merged, added } = mergeJobs(existing, classified);
 
     // Per-board breakdown — submitted = everything we received from that board,
     // kept = the subset that survived rubric + dedupe and made it into merged.

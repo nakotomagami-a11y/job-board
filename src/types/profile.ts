@@ -6,9 +6,10 @@ export interface UserProfile {
   location?: string;
   remotePreference: "remote" | "hybrid" | "onsite" | "any";
   preferredRegions: Region[];
-  preferredRoles: string[]; // free-form: "Frontend Developer", "React Native Dev", etc.
+  primaryStack: string[];
+  preferredRoles: string[];
   preferredSeniority: Seniority[];
-  preferredCategories: string[]; // free-form: "Gaming", "Fintech", "DeFi", etc.
+  preferredCategories: string[];
   salaryRange?: {
     min: number;
     max: number;
@@ -25,6 +26,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   name: "",
   remotePreference: "any",
   preferredRegions: [],
+  primaryStack: [],
   preferredRoles: [],
   preferredSeniority: [],
   preferredCategories: [],

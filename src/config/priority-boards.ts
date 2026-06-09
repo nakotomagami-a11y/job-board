@@ -78,6 +78,16 @@ export const BOARDS: JobBoard[] = [
   // Nordic
   { name: "The Hub", url: "thehub.io", tier: 1, regions: ["Europe", "Nordic"],
     notes: "Nordic startups specifically (DK/SE/NO/FI); 2,000+ jobs; not general EU" },
+  { name: "FINN.no Jobs", url: "finn.no/job/fulltime", tier: 1, regions: ["Europe", "Nordic"],
+    notes: "Norway's dominant marketplace; largest Norwegian jobs feed; filter by category=IT" },
+  { name: "Jobindex Denmark", url: "jobindex.dk", tier: 1, regions: ["Europe", "Nordic"],
+    notes: "Denmark's #1 tech job board; English-language IT jobs at jobindex.dk/jobsoegning/it" },
+  { name: "Duunitori Finland", url: "duunitori.fi", tier: 1, regions: ["Europe", "Nordic"],
+    notes: "Finland's #1 developer community job board; English-language tech roles well-represented" },
+  { name: "Platsbanken Sweden", url: "arbetsformedlingen.se/platsbanken", tier: 1, regions: ["Europe", "Nordic"],
+    notes: "Sweden's official national job board (Arbetsförmedlingen); search 'IT' or 'Software Developer' in English" },
+  { name: "Karriere.no", url: "karriere.no", tier: 1, regions: ["Europe", "Nordic"],
+    notes: "Norwegian careers portal; tech section at karriere.no/stillinger/it" },
 
   // France
   { name: "Welcome to the Jungle", url: "welcometothejungle.com", tier: 1, regions: ["Europe"],

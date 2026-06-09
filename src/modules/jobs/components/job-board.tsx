@@ -287,7 +287,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       {showBlocklist && <BlocklistPanel onClose={() => setShowBlocklist(false)} />}
 
       {/* Actions row */}
-      <div className="flex gap-2 justify-center mb-2 flex-wrap">
+      <div className="flex gap-2 justify-center mb-2.5 flex-wrap">
         <button className="apply-btn px-4.5 py-2 text-[0.82rem]" onClick={() => setShowSearchConfig(true)} disabled={isRunning}
           style={{ opacity: isRunning && activeAction !== "search" ? 0.4 : 1 }}>
           {activeAction === "search" && isRunning ? "⏳ Searching..." : "🔍 Find New Jobs"}
@@ -332,7 +332,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
       </div>
 
       {/* Expandable search options */}
-      <div className="flex gap-2 justify-center mb-3 flex-wrap">
+      <div className="flex gap-2 justify-center flex-wrap mb-6">
         <CountrySearch onSearch={handleCountrySearch} isSearching={isRunning} />
         <CompanyTracker onSearch={handleCompanySearch} isSearching={isRunning} />
         <SourcesPanel jobs={jobs} />
@@ -414,11 +414,11 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         ))}
       </div>
 
-      <div className="job-list">
+      <div className="flex flex-col gap-3 pb-20">
         {sorted.length === 0 ? (
-          <div className="empty-state">
-            <p>No positions match your filters</p>
-            <small>Try adjusting your search or filter criteria</small>
+          <div className="text-center py-20 px-6 text-text-dim">
+            <p className="text-[1.1rem] mb-1">No positions match your filters</p>
+            <p className="text-[0.85rem]">Try adjusting your search or filter criteria</p>
             <div className="mt-4 flex gap-3 justify-center">
               <button className="filter-btn" onClick={resetFilters}>Reset filters</button>
               <button className="apply-btn" onClick={() => setShowSearchConfig(true)} disabled={isRunning}>
@@ -426,21 +426,36 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
               </button>
             </div>
           </div>
-        ) : (
-          sorted.map((job, i) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              index={i}
-              onMarkApplied={onUpdateJob ? (id) => onUpdateJob(id, { applied: true, appliedDate: new Date().toISOString().slice(0, 10) }) : undefined}
-              onReject={onUpdateJob ? (id) => onUpdateJob(id, { rejected: true }) : undefined}
-              onBlocked={onRefresh ? () => onRefresh() : undefined}
-            />
-          ))
-        )}
+        ) : (() => {
+          const groupedBySource = sorted.reduce<Array<{ source: string; jobs: typeof sorted }>>((acc, job) => {
+            const src = job.source || "Unknown";
+            const existing = acc.find((g) => g.source === src);
+            if (existing) { existing.jobs.push(job); }
+            else { acc.push({ source: src, jobs: [job] }); }
+            return acc;
+          }, []);
+
+          return groupedBySource.map(({ source, jobs: groupJobs }) => (
+            <div key={source}>
+              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-text-dim px-1 pt-4 pb-2 border-b border-border mb-2">
+                {source} — {groupJobs.length} {groupJobs.length === 1 ? "position" : "positions"}
+              </div>
+              {groupJobs.map((job, i) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  index={i}
+                  onMarkApplied={onUpdateJob ? (id) => onUpdateJob(id, { applied: true, appliedDate: new Date().toISOString().slice(0, 10) }) : undefined}
+                  onReject={onUpdateJob ? (id) => onUpdateJob(id, { rejected: true }) : undefined}
+                  onBlocked={onRefresh ? () => onRefresh() : undefined}
+                />
+              ))}
+            </div>
+          ));
+        })()}
       </div>
 
-      <footer className="site-footer">
+      <footer className="text-center py-8 border-t border-border text-text-dim text-[0.8rem]">
         JobHunt — Powered by Claude
       </footer>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { REGIONS, SENIORITIES, TIMEFRAMES } from "@/config/filters";
+import { TIMEFRAMES } from "@/config/filters";
 import { sourceLabel } from "@lib/job-scoring";
 import type { Filters, StatusFilter } from "../hooks/use-filters";
 import type { Job } from "@/types/job";
@@ -29,8 +29,8 @@ function FilterGroup({
   if (options.length <= 1) return null;
   return (
     <div>
-      <div className="filter-group-label">{label}</div>
-      <div className="filter-row">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-text-dim mb-1.5">{label}</div>
+      <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
           <button
             key={opt}
@@ -78,9 +78,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
 
   const { hasActiveFilters, activeCount } = useMemo(() => {
     const flags = [
-      filters.region !== "All",
       filters.roleType !== "All",
-      filters.seniority !== "All",
       filters.companyType !== "All",
       filters.category !== "All",
       filters.source !== "All",
@@ -92,30 +90,20 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
   }, [filters]);
 
   return (
-    <div className="filters">
-      {/* Always visible: Region + Posted Within */}
-      <div className="flex gap-4 flex-wrap">
-        <div className="flex-1 min-w-[200px]">
-          <FilterGroup
-            label="Region"
-            options={REGIONS}
-            value={filters.region}
-            onChange={(v) => setFilter("region", v)}
-          />
-        </div>
-        <div>
-          <div className="filter-group-label">Posted Within</div>
-          <div className="filter-row">
-            {TIMEFRAMES.map((tf) => (
-              <button
-                key={tf.label}
-                className={`filter-btn ${filters.timeframeDays === tf.days ? "active" : ""}`}
-                onClick={() => setFilter("timeframeDays", tf.days)}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
+    <div className="flex flex-col gap-[14px] mb-8">
+      {/* Posted Within */}
+      <div>
+        <div className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-text-dim mb-1.5">Posted Within</div>
+        <div className="flex flex-wrap gap-2">
+          {TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.label}
+              className={`filter-btn ${filters.timeframeDays === tf.days ? "active" : ""}`}
+              onClick={() => setFilter("timeframeDays", tf.days)}
+            >
+              {tf.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -131,8 +119,8 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
 
       {/* Status filter */}
       <div>
-        <div className="filter-group-label">Status</div>
-        <div className="filter-row">
+        <div className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-text-dim mb-1.5">Status</div>
+        <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt}
@@ -148,7 +136,7 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
             >
               {opt}
               {opt !== "All" && (
-                <span className="ml-1 text-[0.68rem] opacity-60">
+                <span className="text-[0.68rem] opacity-60">
                   {statusCounts[opt]}
                 </span>
               )}
@@ -185,12 +173,6 @@ export function FilterBar({ filters, setFilter, resetFilters, jobs }: FilterBarP
             options={roleTypes}
             value={filters.roleType}
             onChange={(v) => setFilter("roleType", v)}
-          />
-          <FilterGroup
-            label="Seniority"
-            options={SENIORITIES}
-            value={filters.seniority}
-            onChange={(v) => setFilter("seniority", v)}
           />
           <FilterGroup
             label="Category"

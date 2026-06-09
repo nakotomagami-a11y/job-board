@@ -418,6 +418,14 @@ export function StepPreferences({
       />
 
       <EditableChipList
+        label="Primary Tech Stack (drives job search)"
+        items={draft.primaryStack ?? []}
+        suggestions={["JavaScript", "TypeScript", "Python", "Go", "Rust", "React", "Vue", "React Native", "Node.js", "Next.js", "Flutter", "Django", "Spring", "C#"]}
+        onChange={(val) => updateDraft({ primaryStack: val })}
+        placeholder="Add language or framework (e.g. TypeScript, React)"
+      />
+
+      <EditableChipList
         label="Job Titles / Role Types you're looking for"
         items={draft.preferredRoles}
         suggestions={roleSuggestions}
