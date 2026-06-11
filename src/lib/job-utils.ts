@@ -114,7 +114,10 @@ const NON_EU_PHRASES = [
 // US state abbreviations when preceded by a comma (e.g. "San Francisco, CA").
 // Word boundary after the code prevents matching the start of longer words
 // (e.g. "Illinois" would be caught by ", IL\b" if not for \b failing at 'l').
-const US_STATE_RE = /,\s*(?:CA|NY|TX|WA|MA|IL|NJ|FL|GA|CO|OR|VA|NC|PA|MI|MN|AZ|NV|OH)\b/i;
+const US_STATE_RE = /,\s*(?:CA|NY|TX|WA|MA|IL|NJ|FL|GA|CO|OR|VA|NC|PA|MI|MN|AZ|NV|OH|DC)\b/i;
+
+// Washington DC explicit match (not covered by state abbrevs above).
+const WASHINGTON_DC_RE = /\bWashington,?\s*D\.?C\.?\b/i;
 
 // "USA" or standalone "US" (case-sensitive: real location data uses uppercase).
 const USA_WORD_RE = /\bUSA\b/i;
@@ -139,6 +142,7 @@ export function classifyRegion(location: string, region: string, remote: boolean
   if (NON_EU_PHRASES.some((p) => loc.includes(p.toLowerCase()))) return 'non_eu';
   if (NON_EU_COUNTRY_NAMES.some((c) => loc.includes(c.toLowerCase()))) return 'non_eu';
   if (US_STATE_RE.test(location)) return 'non_eu';
+  if (WASHINGTON_DC_RE.test(location)) return 'non_eu';
   if (USA_WORD_RE.test(location)) return 'non_eu';
   if (US_WORD_RE.test(location)) return 'non_eu';
 

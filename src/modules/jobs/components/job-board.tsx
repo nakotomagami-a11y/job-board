@@ -414,7 +414,7 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 pb-20">
+      <div className="flex flex-col gap-8 pb-20">
         {sorted.length === 0 ? (
           <div className="text-center py-20 px-6 text-text-dim">
             <p className="text-[1.1rem] mb-1">No positions match your filters</p>
@@ -436,8 +436,8 @@ export function JobBoard({ jobs, onRefresh, onUpdateJob }: JobBoardProps) {
           }, []);
 
           return groupedBySource.map(({ source, jobs: groupJobs }) => (
-            <div key={source}>
-              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-text-dim px-1 pt-4 pb-2 border-b border-border mb-2">
+            <div key={source} className="flex flex-col gap-2">
+              <div className="text-[0.88rem] font-semibold uppercase tracking-[0.06em] text-text-dim px-1">
                 {source} — {groupJobs.length} {groupJobs.length === 1 ? "position" : "positions"}
               </div>
               {groupJobs.map((job, i) => (

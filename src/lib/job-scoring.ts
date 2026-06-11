@@ -158,7 +158,7 @@ export function scoreJob(job: Job, profile: UserProfile, now: number = Date.now(
 
   // Category match (10 pts) — fuzzy match against free-form categories
   if (profile.preferredCategories.length > 0) {
-    const jobCatLower = job.category.toLowerCase();
+    const jobCatLower = (job.category || "").toLowerCase();
     const jobDescLower = (job.description || "").toLowerCase();
     const hasMatch = profile.preferredCategories.some((pref) => {
       const prefLower = pref.toLowerCase();
